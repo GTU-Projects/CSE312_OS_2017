@@ -43,7 +43,7 @@ sum	ds 2 ; will keep the sum
 
 begin:
 	LXI SP,stack 	; always initialize the stack pointer
-        mvi c, 10	; init C with 10
+    mvi c, 10	; init C with 10
 	mvi a, 0	; A = 0
 loop:
 	ADD c		; A = A + C

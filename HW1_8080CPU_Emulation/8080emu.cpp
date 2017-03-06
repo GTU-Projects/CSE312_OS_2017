@@ -25,6 +25,7 @@
  For more information, please refer to <http://unlicense.org/>
  */
 
+#include <iostream>
 #include "8080emuCPP.h"
 
 #define PRINTOPS 1
@@ -745,7 +746,7 @@ unsigned CPU8080::Emulate8080p(int debug)
 		case 0x44: state->b = state->h; break;
 		case 0x45: state->b = state->l; break;
 		case 0x46: state->b = ReadFromHL(memory, state); break;
-		case 0x47: state->b = state->a; break;
+		case 0x47: std::cout<<(int)state->a; state->b = state->a; break;
             
 		case 0x48: state->c = state->b; break;
 		case 0x49: state->c = state->c; break;
@@ -1364,6 +1365,7 @@ void CPU8080::ReadFileIntoMemoryAt(const char* filename, uint32_t offset)
 	uint8_t *buffer = &memory[offset];
 	fread(buffer, fsize, 1, f);
 	fclose(f);
+
 }
 
 CPU8080::CPU8080()
