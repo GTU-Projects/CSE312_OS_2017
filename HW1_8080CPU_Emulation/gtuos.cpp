@@ -36,15 +36,12 @@ void GTUOS::printB(const CPU8080& cpu8080,int mode){
     std::cout<<"Content of B: "<<unsigned(cpu8080.state->b)<<std::endl;
 }
 
-
-//TODO: b ve c de 9dan büyük değerlerin hexe cevirilip adres araması yapılacak ve sorun cozulecek
 void GTUOS::printStr(const CPU8080 &cpu8080, int mode) {
     char addr[8];
 
-    sprintf(addr,"0x%d%d",cpu8080.state->b,cpu8080.state->c);
+    sprintf(addr,"0x%x%x",cpu8080.state->b,cpu8080.state->c);
 
     std::string str(addr);
-
     std::istringstream buff(addr);
 
     std::cout<<"Address:"<<str<<std::endl;
@@ -55,18 +52,14 @@ void GTUOS::printStr(const CPU8080 &cpu8080, int mode) {
 
     std::cout<< "Val:"<<val<<std::endl;//cpu8080.memory[]
 
-    std::cout<<"X:"<<cpu8080.memory[val];
 
-    /*int i=0;
     while(true){
-        if(cpu8080.memory[0]==48){
+        if(cpu8080.memory[val]=='\0'){
             break;
         }
-        ++i;
-        std::cout<<i<<std::endl;
-    }*/
-
-
+        std::cout<<cpu8080.memory[val];
+        ++val;
+    }
 
 
 }
