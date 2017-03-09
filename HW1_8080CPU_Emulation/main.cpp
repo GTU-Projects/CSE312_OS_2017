@@ -8,22 +8,20 @@ int main (int argc, char**argv)
 		std::cerr << "Usage: prog exeFile debugOption\n";
 		exit(1); 
 	}
-
 	int DEBUG = atoi(argv[2]);
 
 	CPU8080 theCPU;
 	GTUOS	theOS;
 
-	theCPU.ReadFileIntoMemoryAt(argv[1], 0x0000);
+	theCPU.ReadFileIntoMemoryAt(argv[1], 0x0000);	
 
-
-	while (!theCPU.isHalted())
+	do	
 	{
 		theCPU.Emulate8080p(DEBUG);
-
 		if(theCPU.isSystemCall())
-			theOS.handleCall(theCPU,DEBUG);
-	}
+			theOS.handleCall(theCPU);
+	}	while (!theCPU.isHalted())
+;
 	return 0;
 }
 

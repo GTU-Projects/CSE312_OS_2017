@@ -13,6 +13,7 @@ class GTUOS{
     private:
     void printB(const CPU8080& cpu8080, int mode);
     void printStr(const CPU8080& cpu8080, int mode);
+    void printMem(const CPU8080& cpu8080, int mode);
 
         enum CALL_TYPE{
             PRINT_B=1,

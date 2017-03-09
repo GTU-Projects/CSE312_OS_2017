@@ -22,7 +22,7 @@ stack   equ 0F000h
 	jmp begin
 
 	; Start of our Operating System
-GTU_OS:	PUSH B
+GTU_OS:	PUSH D
 	push D
 	push H
 	push psw
@@ -31,7 +31,7 @@ GTU_OS:	PUSH B
 	pop psw
 	pop h
 	pop d
-	pop B
+	pop D
 	ret
 	; ---------------------------------------------------------------
 	; YOU SHOULD NOT CHANGE ANYTHING ABOVE THIS LINE        
@@ -43,7 +43,7 @@ sum	ds 2 ; will keep the sum
 
 begin:
 	LXI SP,stack 	; always initialize the stack pointer
-    mvi c, 10	; init C with 10
+        mvi c, 10	; init C with 10
 	mvi a, 0	; A = 0
 loop:
 	ADD c		; A = A + C

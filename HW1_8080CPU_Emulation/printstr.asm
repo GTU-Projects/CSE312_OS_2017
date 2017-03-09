@@ -22,7 +22,7 @@ stack   equ 0F000h
 	jmp begin
 
 	; Start of our Operating System
-GTU_OS:	PUSH B
+GTU_OS:	PUSH D
 	push D
 	push H
 	push psw
@@ -31,7 +31,7 @@ GTU_OS:	PUSH B
 	pop psw
 	pop h
 	pop d
-	pop B
+	pop D
 	ret
 	; ---------------------------------------------------------------
 	; YOU SHOULD NOT CHANGE ANYTHING ABOVE THIS LINE        

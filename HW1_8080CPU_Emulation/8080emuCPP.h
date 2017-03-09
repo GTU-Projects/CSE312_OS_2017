@@ -80,6 +80,7 @@ class CPU8080 {
 	friend class GTUOS;
 public:
         CPU8080();
+		~CPU8080();
         unsigned Emulate8080p(int debug = 0);
         bool isHalted() const;
         bool isSystemCall() const;
@@ -87,7 +88,9 @@ public:
 private:
         State8080 * state;
         uint8_t * memory;
-	unsigned char * lastOpcode;
+		unsigned char * lastOpcode;
+		void operator=(const CPU8080 & o) {}
+		CPU8080(const CPU8080 & o) {}
 };
 
 #endif
