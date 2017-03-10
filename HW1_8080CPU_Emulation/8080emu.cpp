@@ -1345,6 +1345,7 @@ unsigned CPU8080::Emulate8080p(int debug)
 		printf("A $%02x B $%02x C $%02x D $%02x E $%02x H $%02x L $%02x SP %04x\n", state->a, state->b, state->c,
            		state->d, state->e, state->h, state->l, state->sp);
 	}
+
 	return cycles8080[*lastOpcode];
 }
 

@@ -1,57 +1,65 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <fstream>
 #include "8080emuCPP.h"
 #include "gtuos.h"
 
 
-GTUOS::GTUOS() {}
 
-uint64_t GTUOS::handleCall(const CPU8080& cpu8080,int mode){
+GTUOS::GTUOS() {
+}
 
-	std::cout<<"System Call!!"<<std::endl;
+uint64_t GTUOS::handleCall(const CPU8080& cpu8080){
 
     uint8_t  regA = cpu8080.state->a;
-    std::cout<<"Register A:"<<unsigned(regA)<<std::endl;
+    int cycleTime=0;
+
+    //std::cout<<"Value of regA:"<<unsigned(regA)<<std::endl;
+
 
     switch (regA){
 
-        case PRINT_B: printB(cpu8080,mode); break;
-        case PRINT_MEM: printMem(cpu8080,mode); break;
-        case READ_B: printB(cpu8080,mode); break;
-        case READ_MEM: printB(cpu8080,mode); break;
-        case PRINT_STR: printStr(cpu8080,mode); break;
-        case READ_STR: printB(cpu8080,mode); break;
+        case PRINT_B: cycleTime = printB(cpu8080); break;
+        case PRINT_MEM: cycleTime = printMem(cpu8080); break;
+        case READ_B: cycleTime = printB(cpu8080); break;
+        case READ_MEM: cycleTime = printB(cpu8080); break;
+        case PRINT_STR: cycleTime = printStr(cpu8080); break;
+        case READ_STR: cycleTime = printB(cpu8080); break;
 
     }
 
     int b1 = (int)cpu8080.state->b;;
     int c1 = (int)cpu8080.state->b;;
 
-	return 0;
+	return cycleTime;
 }
 
 
-void GTUOS::printB(const CPU8080& cpu8080,int mode){
-    std::cout<<"Content of B: "<<unsigned(cpu8080.state->b)<<std::endl;
+int GTUOS::printB(const CPU8080& cpu8080){
+    std::cout<<"System Call PRINT_B"<<std::endl;
+
+    char hexb[8];
+    sprintf(hexb,"%x",cpu8080.state->b);
+
+    std::cout<<"Value of B: dec:"<<int(cpu8080.state->b)<<" hex:"<<hexb<<std::endl;
+
+    return PRINT_B_CYCLE;
 }
 
-void GTUOS::printStr(const CPU8080 &cpu8080, int mode) {
-    char addr[8];
+int GTUOS::printStr(const CPU8080 &cpu8080) {
+    char addr[16];
+
+    std::cout<<"System Call PRINT_STR"<<std::endl;
 
     sprintf(addr,"0x%x%x",cpu8080.state->b,cpu8080.state->c);
+    std::cout<<"Content of Register (address)BC: "<<addr<<std::endl;
 
     std::string str(addr);
     std::istringstream buff(addr);
-
-    std::cout<<"PrintStr start Address:"<<str<<std::endl;
-
     uint64_t val;
 
     buff >> std::hex >> val;
-
-    std::cout<< "Val:"<<val<<std::endl;//cpu8080.memory[]
-
 
     while(true){
         if(cpu8080.memory[val]=='\0'){
@@ -61,28 +69,55 @@ void GTUOS::printStr(const CPU8080 &cpu8080, int mode) {
         ++val;
     }
 
-
+    return 100;
 }
 
-void GTUOS::printMem(const CPU8080& cpu8080,int mode){
+int GTUOS::printMem(const CPU8080& cpu8080){
 
-    char addr[8];
+    char addr[16];
+
+    std::cout<<"System Call PRINT_MEM"<<std::endl;
 
     sprintf(addr,"0x%x%x",cpu8080.state->b,cpu8080.state->c);
+    std::cout<<"Content of Register (address)BC: "<<addr<<std::endl;
 
     std::string str(addr);
     std::istringstream buff(addr);
-
-    std::cout<<"Print Mem Address:"<<str<<std::endl;
-
     uint64_t val;
 
     buff >> std::hex >> val;
 
-    std::cout<< "Print Mem intVal:"<<val<<std::endl;//cpu8080.memory[]
+    std::cout<<"Memory content which pointed with BC:"<<cpu8080.memory[val]<<std::endl;
 
-        std::cout<<cpu8080.memory[val]<<std::endl;
+    return PRINT_MEM_CYCLE;
+}
+
+int GTUOS::readB(const CPU8080 &cpu8080) {
+
+    uint8_t b;
+    std::cout<<"System Call READ_B"<<std::endl;
+
+    std::cout<<"Enter an integer for reg B:";
+    std::cin>>b;
+
+    std::cout<<b;
+
+    cpu8080.state->b = b;
+
+    char addr[16];
+    sprintf(addr,"0x%x",cpu8080.state->b);
+    std::cout<<addr;
 
 
+    return READ_B_CYCLE;
+}
+
+void GTUOS::saveMemoryContents(std::ofstream& output,const CPU8080& cpu){
+
+    for(int i=0;i<0x10000;++i){
+        char str[5];
+        sprintf(str,"%x %x\n",i,cpu.memory[i]);
+        output<<str;
+    }
 }
 
