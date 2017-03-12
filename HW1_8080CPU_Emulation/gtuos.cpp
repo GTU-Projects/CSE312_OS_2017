@@ -17,20 +17,15 @@ uint64_t GTUOS::handleCall(const CPU8080& cpu8080){
 
     //std::cout<<"Value of regA:"<<unsigned(regA)<<std::endl;
 
-
     switch (regA){
-
         case PRINT_B: cycleTime = printB(cpu8080); break;
         case PRINT_MEM: cycleTime = printMem(cpu8080); break;
         case READ_B: cycleTime = printB(cpu8080); break;
         case READ_MEM: cycleTime = printB(cpu8080); break;
         case PRINT_STR: cycleTime = printStr(cpu8080); break;
         case READ_STR: cycleTime = printB(cpu8080); break;
-
+        default: std::cerr<<"Invalid system call"<<std::endl; exit(EXIT_FAILURE);
     }
-
-    int b1 = (int)cpu8080.state->b;;
-    int c1 = (int)cpu8080.state->b;;
 
 	return cycleTime;
 }
@@ -38,12 +33,7 @@ uint64_t GTUOS::handleCall(const CPU8080& cpu8080){
 
 int GTUOS::printB(const CPU8080& cpu8080){
     std::cout<<"System Call PRINT_B"<<std::endl;
-
-    char hexb[8];
-    sprintf(hexb,"%x",cpu8080.state->b);
-
-    std::cout<<"Value of B: dec:"<<int(cpu8080.state->b)<<" hex:"<<hexb<<std::endl;
-
+    std::cout<<"Value of B(decimal): "<<int(cpu8080.state->b)<<std::endl;
     return PRINT_B_CYCLE;
 }
 
