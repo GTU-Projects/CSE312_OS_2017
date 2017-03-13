@@ -46,31 +46,38 @@ START:	DW 12H, 34H, 53H, 2AH, 5BH, 6FH, 33H, 21H, 7CH, 0FFH
 error_msg:	DW 'error',00AH,00H ; null terminated string
 
 	ORG 0700H
-I:	DB 00H
-TOTAL:	DB 26
+I:	DB 00H ; index of array(address space)
+TOTAL:	DB 26 ; number of items to compare
+
 
 	ORG 000DH
 begin:
 	LXI SP,stack 	; always initialize the stack pointer
 
-	LXI B,START
+	MVI A, READ_B ; store system call type
+	call GTU_OS ; system call
+
+	MOV D,B ; store number to register d
+
+	LXI B,START ; load address of array
 
 LOOP:
-	LDAX B
-	SUI 3BH
-	JZ FOUND
-	INX B
-	INX B
-	LDA I
-	INR A
-	STA I
-	SUI 26
-	JNZ LOOP
+	LDAX B ; A <- (BC)
+	SUB D ; A-D
+	JZ FOUND ; if zero, find number
+	INX B ; go next address
+	INX B ; ""
+	LDA I ; load current index
+	INR A ; increment index
+	STA I ; store index
+	SUI 26 ; # of items in array(actually memory)
+	JNZ LOOP ; i -26 != 0 , if not zero go next item
+
 NOT_FOUND:
-	LXI B, error_msg
-	MVI A, PRINT_STR
-	call GTU_OS
-	JMP EXIT
+	LXI B, error_msg ; load error message addres
+	MVI A, PRINT_STR ; load command
+	call GTU_OS ; call system os
+	JMP EXIT ; exit
 
 FOUND:
 	hlt

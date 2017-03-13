@@ -20,7 +20,7 @@ uint64_t GTUOS::handleCall(const CPU8080& cpu8080){
     switch (regA){
         case PRINT_B: cycleTime = printB(cpu8080); break;
         case PRINT_MEM: cycleTime = printMem(cpu8080); break;
-        case READ_B: cycleTime = printB(cpu8080); break;
+        case READ_B: cycleTime = readB(cpu8080); break;
         case READ_MEM: cycleTime = printB(cpu8080); break;
         case PRINT_STR: cycleTime = printStr(cpu8080); break;
         case READ_STR: cycleTime = printB(cpu8080); break;
@@ -39,7 +39,6 @@ int GTUOS::printB(const CPU8080& cpu8080){
 
 int GTUOS::printStr(const CPU8080 &cpu8080) {
     char addr[16];
-
     std::cout<<"System Call PRINT_STR"<<std::endl;
 
     sprintf(addr,"0x%x%x",cpu8080.state->b,cpu8080.state->c);
@@ -63,9 +62,7 @@ int GTUOS::printStr(const CPU8080 &cpu8080) {
 }
 
 int GTUOS::printMem(const CPU8080& cpu8080){
-
     char addr[16];
-
     std::cout<<"System Call PRINT_MEM"<<std::endl;
 
     sprintf(addr,"0x%x%x",cpu8080.state->b,cpu8080.state->c);
@@ -83,21 +80,19 @@ int GTUOS::printMem(const CPU8080& cpu8080){
 }
 
 int GTUOS::readB(const CPU8080 &cpu8080) {
-
-    uint8_t b;
+    int b;
     std::cout<<"System Call READ_B"<<std::endl;
 
-    std::cout<<"Enter an integer for reg B:";
+    std::cout<<"Enter an integer(0-255) for reg B:";
     std::cin>>b;
-
-    std::cout<<b;
-
-    cpu8080.state->b = b;
+    if(b<0 || b>255)
+        cpu8080.state->b=0;
+    else
+        cpu8080.state->b = b;
 
     char addr[16];
     sprintf(addr,"0x%x",cpu8080.state->b);
-    std::cout<<addr;
-
+    std::cout<<"addr"<<addr;
 
     return READ_B_CYCLE;
 }

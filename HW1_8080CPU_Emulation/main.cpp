@@ -39,8 +39,6 @@ int main(int argc, char **argv) {
 
     } while (!theCPU.isHalted());
 
-
-
     std::cout << "Total Number of Cycles :" << totalCycleTimes << std::endl;
 
     theOS.saveMemoryContents(output, theCPU);
