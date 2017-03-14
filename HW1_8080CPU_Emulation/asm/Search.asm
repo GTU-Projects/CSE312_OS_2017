@@ -64,7 +64,7 @@ begin:
 LOOP:
 	LDAX B ; A <- (BC)
 	SUB D ; A-D
-	JZ FOUND ; if zero, find number
+	JZ FOUND ; if zero, find number, and print index
 	INX B ; go next address
 	INX B ; ""
 	LDA I ; load current index
@@ -80,6 +80,10 @@ NOT_FOUND:
 	JMP EXIT ; exit
 
 FOUND:
+	LDA I ; store index of item
+	MOV B,A ; load index to reg B
+	MVI A,PRINT_B ; load system call
+	call GTU_OS ; call system
 	hlt
 
 EXIT:

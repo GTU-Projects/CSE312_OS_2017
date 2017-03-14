@@ -90,9 +90,10 @@ int GTUOS::readB(const CPU8080 &cpu8080) {
     else
         cpu8080.state->b = b;
 
+    /*
     char addr[16];
     sprintf(addr,"0x%x",cpu8080.state->b);
-    std::cout<<"addr"<<addr;
+    std::cout<<"addr"<<addr;*/
 
     return READ_B_CYCLE;
 }
