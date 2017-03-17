@@ -1,8 +1,8 @@
         ; 8080 assembler code
-        .hexfile PrintNumberRev.hex
-        .binfile PrintNumberRev.com
+        .hexfile PrintNumbers.hex
+        .binfile PrintNumbers.com
         ; try "hex" for downloading in hex format
-        .download bin
+        .download bin  
         .objcopy gobjcopy
         .postbuild echo "OK!"
         ;.nodump
@@ -14,6 +14,8 @@ READ_B		equ 3
 READ_MEM	equ 4
 PRINT_STR	equ 5
 READ_STR	equ 6
+
+NUM		equ 50 ; number bound to write
 
 	; Position for stack pointer
 stack   equ 0F000h
@@ -34,22 +36,20 @@ GTU_OS:	PUSH D
 	pop D
 	ret
 	; ---------------------------------------------------------------
-	; YOU SHOULD NOT CHANGE ANYTHING ABOVE THIS LINE
+	; YOU SHOULD NOT CHANGE ANYTHING ABOVE THIS LINE        
 
 	;This program prints a null terminated string to the screen
 
-U_BOUND		equ 100 ; number bound to write
-L_BOUND		equ 49
 
 begin:
 	LXI SP,stack 	; always initialize the stack pointer
 
-	MVI B,U_BOUND ; initialize b
+	MVI B,0 ; initialize b
 
 LOOP:	MVI A, PRINT_B ; initalize to print
 	call GTU_OS ; system call
-	DCR B ; increment b
-	MVI A, L_BOUND ; set a register to 50
+	INR B ; increment b
+	MVI A, NUM ; set a register to NUM
 	SUB B ; A=A-B;
-	JM LOOP ; jmp if A is positive
+	JP LOOP ; jmp if A is positive
 	hlt		; end program

@@ -35,27 +35,16 @@ GTU_OS:	PUSH D
 	ret
 	; ---------------------------------------------------------------
 	; YOU SHOULD NOT CHANGE ANYTHING ABOVE THIS LINE
-
+	; this file sorts numbers with bubble sort
 
 	; my variables to use in searching
 	ORG 8000H
-START:	DW 4,1,0,2
+START:	DW 12H, 34H, 53H, 2AH, 5BH, 6FH, 33H, 21H, 7CH, 0FFH,0BAH, 0CBH, 0A1H, 1AH, 3BH, 0C3H, 4AH, 5DH, 62H,0A3H,0B1H, 5CH, 7FH, 0CCH, 0AAH, 34H
 
-;START:	DW 12H, 34H, 53H, 2AH, 5BH, 6FH, 33H, 21H, 7CH, 0FFH
-;	DW 0BAH, 0CBH, 0A1H, 1AH, 3BH, 0C3H, 4AH, 5DH, 62H, ;0A3H
-;	DW 0B1H, 5CH, 7FH, 0CCH, 0AAH, 34H
 
 	ORG 0700H
-I:	DB 00H ; index of array(address space)
-N:	DB 4 ; number of items to compare
-SIZE	equ 4
-MIN:	DB 03H
-
-
-error_msg:	DW 'error',00AH,00H ; null terminated string
-
-
-
+N:	DB 26 ; number of items to compare
+I:	DB 00H ; index for print array
 
 	ORG 000DH
 begin:
@@ -63,12 +52,11 @@ begin:
 
 WHILE:
 	LDA N ; n = size
-	MVI B,0
-	SUB B
-	JZ EXIT ; n==0
 	DCR A ; n = n-1
-	STA N ;= save N
 
+	JZ EXIT ; n==0
+
+	STA N ;= save N
 
 	MVI H,0 ; I=0
 	LXI B,START ; load first element address to BC
@@ -77,16 +65,15 @@ FOR:
 	SUB H ; A = N-H
 	JZ WHILE ; A-I == 0
 
-
 IF:
 	LDAX B ; get a[i]
 	MOV D,A ; D = a[i]
-	INX B
+	INX B ; increment array index
 	INX B
 	LDAX B ; get a[i+1]
 
-	SUB D ; a[i+1] - a[i]
-	JM SWAP ; if A=a[i+1] < D=a[i]
+	CMP D ; a[i+1] - a[i]
+	JC SWAP ; if A=a[i+1] < D=a[i]
 	JMP CONT_FOR ; go on
 
 SWAP:
@@ -98,14 +85,30 @@ SWAP:
 	DCX B
 	MOV A,E ; a = e
 	STAX B ; arr[i] = e
+	INX B
+	INX B
+
 
 CONT_FOR:
 	INR H
-	INX B
-	INX B
 	JMP FOR
 
-
-
 EXIT:
+	LXI D, START
+
+PRINT_LOOP:
+	LDAX D ; A <- (BC)
+	MOV B,A
+	MVI A, PRINT_B
+	call GTU_OS
+
+	INX D ; go next address
+	INX D ; ""
+	LDA I ; load current index
+	INR A ; increment index
+	STA I ; store index
+	SUI 26 ; # of items in array(actually memory)
+	JNZ PRINT_LOOP ; i -26 != 0 , if not zero go next item
+
+
 	hlt		; end program

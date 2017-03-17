@@ -11,14 +11,13 @@ class GTUOS{
 		GTUOS();
 		uint64_t handleCall(const CPU8080& cpu8080);
         void saveMemoryContents(std::ofstream& output,const CPU8080& cpu);
-
-    int readB(const CPU8080& cpu8080);
+        void test(const CPU8080& cpu);
 
     private:
         int printB(const CPU8080& cpu8080);
         int printStr(const CPU8080& cpu8080);
         int printMem(const CPU8080& cpu8080);
-
+        int readB(const CPU8080& cpu8080);
 
         int readMem(const CPU8080& cpu8080);
         int readStr(const CPU8080& cpu8080);
