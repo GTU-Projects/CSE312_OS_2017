@@ -107,6 +107,7 @@ int GTUOS::readStr(const CPU8080 &cpu8080) {
     for(i=0;i<str.length();++i){
         cpu8080.memory[address+i] = str[i];
     }
+    cpu8080.memory[(address++)+i]='\n';
     cpu8080.memory[address+i]='\0';
 
     std::cout<<"String writed on address:"<<unsigned(address)<<std::endl;
@@ -152,7 +153,7 @@ int GTUOS::readMem(const CPU8080 &cpu8080) {
 
 
 void GTUOS::saveMemoryContents(std::ofstream& output,const CPU8080& cpu){
-    
+
     for(int i=0;i<0x1000;++i){
         char str[5];
         sprintf(str,"%04x",i*16);

@@ -40,8 +40,8 @@ GTU_OS:	PUSH D
 	ORG 8000H
 
 START:  DW 12H, 34H, 53H, 2AH, 5BH, 6FH, 33H, 21H, 7CH, 0FFH
-  DW 0BAH, 0CBH, 0A1H, 1AH, 3BH, 0C3H, 4AH, 5DH, 62H, 0A3H
-  DW 0B1H, 5CH, 7FH, 0CCH, 0AAH, 34H
+    DW 0BAH, 0CBH, 0A1H, 1AH, 3BH, 0C3H, 4AH, 5DH, 62H, 0A3H
+    DW 0B1H, 5CH, 7FH, 0CCH, 0AAH, 34H
 
 error_msg:  DW 'Could not find number',00AH,00H ; null terminated string
 
@@ -55,16 +55,16 @@ begin:
 	MVI A, READ_B ; store system call type
     call GTU_OS ; system call
 
-MOV D,B ; store number to register d
+    MOV D,B ; store number to register d
 
-  LXI B,START ; load address of array
+    LXI B,START ; load address of array
 
 LOOP:
-  LDAX B ; A <- (BC)
-  SUB D ; A-D
-  JZ FOUND ; if zero, find number, and print index
-  INX B ; go next address
-  INX B ; ""
+    LDAX B ; A <- (BC)
+    SUB D ; A-D
+    JZ FOUND ; if zero, find number, and print index
+    INX B ; go next address
+    INX B ; ""
 
     LDA I ; load current index
     INR A ; increment index
