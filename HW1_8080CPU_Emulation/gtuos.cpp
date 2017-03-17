@@ -152,7 +152,7 @@ int GTUOS::readMem(const CPU8080 &cpu8080) {
 
 
 void GTUOS::saveMemoryContents(std::ofstream& output,const CPU8080& cpu){
-
+    
     for(int i=0;i<0x1000;++i){
         char str[5];
         sprintf(str,"%04x",i*16);
