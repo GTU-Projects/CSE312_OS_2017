@@ -19,7 +19,7 @@ EXEC		equ 8
 WAITPID		equ 9
 
 	; Position for stack pointer
-stack   equ 0F000H
+stack   equ 0F00H
 
 	org 0000H
 	jmp begin
@@ -40,11 +40,13 @@ GTU_OS:	PUSH D
 	; YOU SHOULD NOT CHANGE ANYTHING ABOVE THIS LINE
 
 	; my variables to use in searching
-	ORG 8000H
+	ORG 0010H
 
-in_take_msg:	DW '##-->Enter file name',00AH,00H ; null terminated string
+in_take_msg:	DW '##-->Enter file name to execute',00AH,00H ; null terminated string
 bye_msg:	DW '##-->good bye',00AH,00H
-out_hello:	DW '##-->Welcome',00AH,00H
+out_hello:	DW '##-->Welcome simple shell program',00AH,00H
+parent_msg:	DW '##-->Parent',00AH,00H
+child_msg:	DW '##-->Child',00AH,00H
 
 begin:
 	LXI SP,stack 	; always initialize the stack pointer
@@ -53,19 +55,56 @@ begin:
 	MVI A, PRINT_STR ; store system call type
 	call GTU_OS ; system call
 
-	MVI B, 70
-	MVI C, 70
+LOOP:
+	MVI B, 10H
+	MVI C, 00H
 	MVI A, READ_STR
-	call GTU_OS	
+	call GTU_OS
 
 	MVI A, FORK ; store system call type
 	call GTU_OS ; system call
 
+	PUSH B
+	MVI B, 1 ; load 1 to reg b, for error chech
+	CMP B ; if returned pid is 1, there is a fork error
+	JZ ERROR_EXIT 
 
+	MVI B, 0 ; 
+	CMP B ; if pid==0 go child area, else parent area
+	POP B ; restore b
+	JZ CHILD_AREA
+	JMP PARENT_AREA
+
+PARENT_AREA:
+	LXI B,parent_msg
+	MVI A, PRINT_STR ; store system call type
+	call GTU_OS ; system call
+
+	MVI A, WAITPID ; wait until child finish
+	call GTU_OS ; system call
+	JMP ERROR_EXIT	
+
+CHILD_AREA:
+	LXI B,child_msg
+	MVI A, PRINT_STR ; store system call type
+	call GTU_OS ; system call
+
+	MVI A, EXEC ; call execve to run new program
+	call GTU_OS ; system call
+	JMP ERROR_EXIT	
+	
 	; READ USE AGE AND PRINT SCREEN
 	LXI B,bye_msg ; test for PRINT_STR
 	MVI A, PRINT_STR ; store system call type
 	call GTU_OS ; system call
+	JMP END
 
 
+ERROR_EXIT:
+	
+
+
+
+
+END:
 	hlt    ; end program
