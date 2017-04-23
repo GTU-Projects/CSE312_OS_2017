@@ -34,12 +34,13 @@ typedef struct {
     State8080 state8080;    // saved registers like a,b,c,sp,pc
     uint64_t baseReg;
     uint64_t limitReg;
-    uint64_t pid;
-    uint64_t ppid;  // parent pid
+    uint16_t pid;
+    uint16_t ppid;  // parent pid
     uint64_t startTime; // starting time of process, the cycle number of the CPU
     uint64_t cycle; // how many cycle the process hadd used so far
-    ProcessState  procState; // read, blocked, running
+    ProcessState  procState; // ready, blocked, running
     uint64_t address;   //physical addres of the memory location of process
+    uint8_t isFull;
 } ProcessInfo;
 
 class CycleTime {
@@ -70,10 +71,10 @@ public:
 
 private:
 
-    ProcessInfo processTable[MAX_PROC_COUNT];
-
+    ProcessInfo *processTable ;
     CPU8080 *theCPU;
     uint8_t debugMode;
+    uint8_t currProcInd;
 
     uint8_t printB();
     uint8_t printStr();
@@ -84,6 +85,8 @@ private:
     uint8_t fork();
     uint8_t exec();
     uint8_t waitpid();
+
+    void printProcInfs(uint64_t ind) const;
 };
 
 #endif

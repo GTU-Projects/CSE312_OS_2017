@@ -6,7 +6,8 @@
 GTUOS::GTUOS(CPU8080* cpu8080) {
 
   theCPU = cpu8080;
-  sprintf(processTable[0].name,"hmennOS");
+  processTable = (ProcessInfo *)calloc(4, sizeof(ProcessInfo));
+  sprintf(processTable[0].name, "hmennOS");
   processTable[0].state8080 = *(theCPU->state);
   processTable[0].baseReg = 0;
   processTable[0].limitReg = 0x1000000; // can access all 64K
@@ -16,8 +17,10 @@ GTUOS::GTUOS(CPU8080* cpu8080) {
   processTable[0].cycle = 0;
   processTable[0].procState = ProcessState::RUNNING;
   processTable[0].address = 0;
+  processTable[0].isFull = 1;
 
   debugMode = 0;
+  currProcInd = 0;
 
 }
 
@@ -194,9 +197,9 @@ void GTUOS::saveMemoryContents(const string& filename) {
 
   output.open(filename.c_str());
   if (!output.is_open()) {
-      std::cerr << "Unable to open output file:" << filename << std::endl;
-      std::cerr << "Writing memory status is failed" << std::endl;
-      return;
+    std::cerr << "Unable to open output file:" << filename << std::endl;
+    std::cerr << "Writing memory status is failed" << std::endl;
+    return;
   }
 
   for (int i = 0; i < 0x1000; ++i) {
@@ -230,6 +233,31 @@ void GTUOS::test(const CPU8080 &cpu) {
 
 uint8_t GTUOS::fork() {
 
+  int nextEmpty = -1; // error state
+  // get nex empty location
+  for (uint8_t i = 0; i < MAX_PROC_COUNT; ++i) {
+    if (i != currProcInd && !processTable[i].isFull) {
+      nextEmpty = i;
+      break;
+    }
+  }
+
+  if (nextEmpty == -1) {
+    theCPU->state->a = 1;
+    return nextEmpty;
+  }
+
+  processTable[nextEmpty] = processTable[currProcInd];
+  processTable[nextEmpty].baseReg = 0x10000 * nextEmpty;
+  processTable[nextEmpty].limitReg = 0x10000 * (nextEmpty + 1)-1;
+  processTable[nextEmpty].pid = nextEmpty + 2;
+  processTable[nextEmpty].ppid = processTable[currProcInd].pid;
+  processTable[nextEmpty].procState = ProcessState::READY;
+  processTable[nextEmpty].address = processTable[nextEmpty].baseReg;
+  processTable[nextEmpty].isFull = 1;
+
+  printProcInfs(nextEmpty);
+
 }
 
 uint8_t GTUOS::exec() {
@@ -244,4 +272,9 @@ void GTUOS::setDebugMode(uint8_t mode) {
   debugMode = mode;
 }
 
+void GTUOS::printProcInfs(uint64_t ind) const {
+  printf("Process Name: %s\n", processTable[ind].name );
+  printf("Pid: %d - PPid:%d\n", processTable[ind].pid, processTable[ind].ppid );
+  printf("Address: %ld\n", processTable[ind].address );
+}
 
