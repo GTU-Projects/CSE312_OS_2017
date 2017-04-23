@@ -3,10 +3,12 @@
 
 #include <string>
 #include "8080emuCPP.h"
+#include "memory.h"
 
 
 #define MAX_PROC_NAME 255
 #define MAX_PROC_COUNT 4
+#define CS_CYCLE 100 // context switch cycle
 
 // for colored texts
 #define RED   "\x1B[31m"
@@ -50,7 +52,7 @@ typedef struct {
     uint64_t cycle; // how many cycle the process hadd used so far
     ProcessState  procState; // ready, blocked, running
     uint64_t address;   //physical addres of the memory location of process
-    uint8_t isFull;
+    uint8_t isAlive;
 } ProcessInfo;
 
 class CycleTime {
@@ -99,6 +101,10 @@ private:
 
     void printProcInfs(uint64_t ind) const;
     void dupeMemory(uint64_t f, uint64_t t); // from f to t
+
+    bool isAllProcessesDone() const;
+    void contextSwitch(uint8_t p1, uint8_t p2); // p1 -> p2
+    uint8_t getNextProcInd() const;
 };
 
 #endif

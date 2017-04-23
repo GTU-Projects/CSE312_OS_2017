@@ -28,8 +28,11 @@ int main (int argc, char**argv)
 
 
 	theOS.saveMemoryContents("exe.mem");
+
+#ifdef DEBUG
 	theOS.saveProcInfos("proc.info");
-	
+#endif
+
 	return 0;
 }
 

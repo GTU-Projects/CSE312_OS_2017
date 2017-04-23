@@ -6,43 +6,102 @@
 GTUOS::GTUOS(CPU8080* cpu8080) {
 
   theCPU = cpu8080;
-  processTable = (ProcessInfo *)calloc(4, sizeof(ProcessInfo));
+  processTable = (ProcessInfo *)calloc(sizeof(ProcessInfo), MAX_PROC_COUNT);
+  // calloc already resets the allocated area
+  //bzero(processTable,MAX_PROC_COUNT*sizeof(ProcessInfo));
+
   sprintf(processTable[0].name, "hmennOS");
   processTable[0].state8080 = *(theCPU->state);
   processTable[0].baseReg = 0;
-  processTable[0].limitReg = 0x10000-1; // can access all 64K
+  processTable[0].limitReg = 0x10000 - 1; // can access all 64K
   processTable[0].pid = 2;
   processTable[0].ppid = 2; // Parent of os is os
   processTable[0].startTime = 0;
   processTable[0].cycle = 0;
-  processTable[0].procState = ProcessState::RUNNING;
+  processTable[0].procState = RUNNING;
   processTable[0].address = 0;
-  processTable[0].isFull = 1;
+  processTable[0].isAlive = 1;
 
   debugMode = 0;
   currProcInd = 0;
 
 }
 
+bool GTUOS::isAllProcessesDone()const {
+  for (uint8_t i = 0; i < MAX_PROC_COUNT; ++i) {
+    if (processTable[i].isAlive)
+      return false;
+  }
+  return true;
+}
+
 uint64_t GTUOS::run() {
 
   uint64_t totalCycleTimes = 0;
+  uint16_t csCycle = 0; //context switch cycle
+  uint16_t cycle = 0;
 
 
   do {
-    totalCycleTimes += theCPU->Emulate8080p(debugMode);
-    cout<<RED<<"Cycle:"<<totalCycleTimes<<RESET<<endl;
-
-
-    if (theCPU->isSystemCall())
-      totalCycleTimes += this->handleCall();
 
     if (debugMode == 2)
       std::cin.get();
 
-  } while (!theCPU->isHalted());
+    totalCycleTimes += cycle = theCPU->Emulate8080p(debugMode);
+    //cout << RED << "Cycle:" << totalCycleTimes << RESET << endl;
+
+    if (theCPU->isSystemCall()){
+      totalCycleTimes += cycle += this->handleCall();
+    }
+
+    if (theCPU->isHalted()) // mark process is dead
+      processTable[currProcInd].isAlive = false;
+
+    printf("I:%d - PC:%x - Mem:%x\n",currProcInd,theCPU->state->pc,theCPU->memory->at(theCPU->state->pc));
+
+    // count round-robin cycle
+    csCycle += cycle;
+    if (csCycle >= CS_CYCLE) {
+      contextSwitch(currProcInd, getNextProcInd());
+      csCycle = csCycle % CS_CYCLE;
+    }
+
+
+
+  } while (!isAllProcessesDone());
 
   return totalCycleTimes;
+}
+
+// p1 -> p2
+void GTUOS::contextSwitch(uint8_t p1, uint8_t p2) {
+  std::cout << BLU << "Context switch occur betwwen p1:" << (int)p1 << ", p2:" << (int)p2 << RESET << std::endl;
+
+  processTable[p1].state8080 = *(theCPU->state);
+  processTable[p1].procState = READY;
+
+  *(theCPU->state) = processTable[p2].state8080;
+  processTable[p2].procState=RUNNING;
+
+  Memory *mem = (Memory*)theCPU->memory;
+  mem->setBaseResister(processTable[p2].baseReg);
+  mem->setLimitRegister(processTable[p2].limitReg);
+
+  currProcInd = p2; // switch current process index
+}
+
+uint8_t GTUOS::getNextProcInd() const {
+  for (uint8_t i = currProcInd + 1; i < MAX_PROC_COUNT; ++i)
+    if (processTable[i].isAlive) // get next proc which is live
+      return i;
+
+  // if there is not alive process forward locations , look backwards
+  for (uint8_t i = 0; i < currProcInd; ++i)
+    if (processTable[i].isAlive)
+      return i;
+
+  // there is just one process
+  return currProcInd;
 }
 
 
@@ -54,31 +113,31 @@ uint64_t GTUOS::handleCall() {
   //std::cout<<"Value of regA:"<<unsigned(regA)<<std::endl;
 
   switch (regA) {
-  case SystemCallType::PRINT_B:
+  case PRINT_B:
     cycleTime = printB();
     break;
-  case SystemCallType::PRINT_MEM:
+  case PRINT_MEM:
     cycleTime = printMem();
     break;
-  case SystemCallType::READ_B:
+  case READ_B:
     cycleTime = readB();
     break;
-  case SystemCallType::READ_MEM:
+  case READ_MEM:
     cycleTime = readMem();
     break;
-  case SystemCallType::PRINT_STR:
+  case PRINT_STR:
     cycleTime = printStr();
     break;
-  case SystemCallType::READ_STR:
+  case READ_STR:
     cycleTime = readStr();
     break;
-  case SystemCallType::FORK:
+  case FORK:
     cycleTime = this->fork();
     break;
-  case SystemCallType::EXEC:
+  case EXEC:
     cycleTime = this->exec();
     break;
-  case SystemCallType::WAITPID:
+  case WAITPID:
     cycleTime = this->waitpid();
     break;
   default:
@@ -178,7 +237,7 @@ uint8_t GTUOS::printMem() {
 uint8_t GTUOS::readMem() {
   int number;
   uint16_t address;
-  std::cout << GRN <<"SystemCall: READ_MEM" << RESET<<std::endl;
+  std::cout << GRN << "SystemCall: READ_MEM" << RESET << std::endl;
   std::cout << "Enter an integer(0-255) for MEM(BC)=:";
   std::cin >> number;
 
@@ -194,31 +253,6 @@ uint8_t GTUOS::readMem() {
   return CycleTime::READ_MEM;
 }
 
-
-void GTUOS::saveMemoryContents(const string& filename) {
-  std::ofstream output;
-
-  output.open(filename);
-  if (!output.is_open()) {
-    std::cerr << "Unable to open output file:" << filename << std::endl;
-    std::cerr << "Writing memory status is failed" << std::endl;
-    return;
-  }
-
-  for (int i = 0; i < 0x1000; ++i) {
-    char str[5];
-    sprintf(str, "%04x", i * 16);
-    output << str << " ";
-    for (int j = 0; j < 0x10; ++j) {
-      sprintf(str, "%02x", theCPU->memory->at(i * 16 + j));
-      output << str << " ";
-    }
-    output << std::endl;
-  }
-
-  output.close();
-
-}
 
 void GTUOS::test(const CPU8080 &cpu) {
 
@@ -241,7 +275,7 @@ uint8_t GTUOS::fork() {
   int nextEmpty = -1; // next empty area for process
   // get nex empty location
   for (uint8_t i = 0; i < MAX_PROC_COUNT; ++i) {
-    if (i != currProcInd && !processTable[i].isFull) {
+    if (i != currProcInd && !processTable[i].isAlive) {
       nextEmpty = i;
       break;
     }
@@ -252,18 +286,22 @@ uint8_t GTUOS::fork() {
     return nextEmpty;
   }
 
-  // copy parent informations to child
-  processTable[nextEmpty] = processTable[currProcInd];
+
+  // copy all needed datas
+  processTable[nextEmpty].state8080 = *(theCPU->state);
 
   strcat(processTable[nextEmpty].name, "_clone");
   processTable[nextEmpty].baseReg = 0x4000 * nextEmpty; // 4KB per process
   processTable[nextEmpty].limitReg = 0x4000 * (nextEmpty + 1) - 1;
   processTable[nextEmpty].pid = nextEmpty + 2;
   processTable[nextEmpty].ppid = processTable[currProcInd].pid;
-  processTable[nextEmpty].procState = ProcessState::READY;
+  processTable[nextEmpty].procState = READY;
   processTable[nextEmpty].address = processTable[nextEmpty].baseReg;
-  processTable[nextEmpty].isFull = 1;
-  processTable[nextEmpty].state8080.a = processTable[nextEmpty].pid;
+  processTable[nextEmpty].isAlive = 1;
+  
+  // prepare returned pid values
+  processTable[nextEmpty].state8080.a = 0; // return 0 to child
+  theCPU->state->a = processTable[nextEmpty].pid; // return child pid to parent
 
   // dupe parent memory to child
   dupeMemory(processTable[currProcInd].address, processTable[nextEmpty].address);
@@ -297,17 +335,44 @@ void GTUOS::printProcInfs(uint64_t ind) const {
 // copy 16K memory from x to y
 void GTUOS::dupeMemory(uint64_t f, uint64_t t) {
 
-  for (uint32_t i = 0; i < 0x4000; ++i)
+  for (uint32_t i = 0; i < 0x4000; ++i){
     theCPU->memory->physicalAt(t + i) = theCPU->memory->physicalAt(f + i);
+  }
 
 }
 
 
-void GTUOS::saveProcInfos(const string& filename){
+void GTUOS::saveMemoryContents(const string& filename) {
+  std::ofstream output;
+
+  output.open(filename.c_str());
+  if (!output.is_open()) {
+    std::cerr << "Unable to open output file:" << filename << std::endl;
+    std::cerr << "Writing memory status is failed" << std::endl;
+    return;
+  }
+
+  for (int i = 0; i < 0x1000; ++i) {
+    char str[5];
+    sprintf(str, "%04x", i * 16);
+    output << str << " ";
+    for (int j = 0; j < 0x10; ++j) {
+      sprintf(str, "%02x", theCPU->memory->at(i * 16 + j));
+      output << str << " ";
+    }
+    output << std::endl;
+  }
+
+  output.close();
+
+}
+
+
+void GTUOS::saveProcInfos(const string& filename) {
 
   std::ofstream output;
 
-  output.open(filename);
+  output.open(filename.c_str());
   if (!output.is_open()) {
     std::cerr << "Unable to open output file:" << filename << std::endl;
     std::cerr << "Writing processes infos is failed" << std::endl;
@@ -315,9 +380,9 @@ void GTUOS::saveProcInfos(const string& filename){
   }
 
   for (int i = 0; i < MAX_PROC_COUNT; ++i) {
-    output<<"--------------------------------------"<<endl;
-    output<< "PID:"<<processTable[i].pid<<", PPID:"<<processTable[i].ppid<<", Name:"<<processTable[i].name<<endl;
-    output<< "Base Register:"<<processTable[i].baseReg<<", Limit Register:"<<processTable[i].limitReg<<endl;
+    output << "--------------------------------------" << endl;
+    output << "PID:" << processTable[i].pid << ", PPID:" << processTable[i].ppid << ", Name:" << processTable[i].name << endl;
+    output << "Base Register:" << processTable[i].baseReg << ", Limit Register:" << processTable[i].limitReg << endl;
   }
 
   output.close();
