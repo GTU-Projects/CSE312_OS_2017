@@ -15,39 +15,20 @@ int main (int argc, char**argv)
 	int DEBUG = atoi(argv[2]);
 	uint64_t totalCycleTimes = 0;
 
-	memory mem;
+	Memory mem(0x1000000); // create 64K memory
 	CPU8080 theCPU(&mem);
-	GTUOS	theOS;
-	std::ofstream output;
-	std::string filename = "exe.mem";
+	GTUOS	theOS(&theCPU);
+	
 
-	theCPU.ReadFileIntoMemoryAt(argv[1], 0x0000);
+	theCPU.ReadFileIntoMemoryAt(argv[1], 0x0000); // initialize memory
 
-	output.open(filename.c_str());
-
-	if (!output.is_open()) {
-			std::cerr << "Unable to open output file:" << filename << std::endl;
-			std::cerr << "Writing memory status is failed" << std::endl;
-			return 1;
-	}
-
-	do {
-			totalCycleTimes += theCPU.Emulate8080p(DEBUG);
-
-			if (theCPU.isSystemCall())
-					totalCycleTimes += theOS.handleCall(theCPU);
-
-			if (DEBUG == 2)
-					std::cin.get();
-
-	} while (!theCPU.isHalted());
-
-
-
+	theOS.setDebugMode(DEBUG);
+	totalCycleTimes = theOS.run();
 	std::cout << "Total Number of Cycles :" << totalCycleTimes << std::endl;
 
-	theOS.saveMemoryContents(output, theCPU);
-	output.close();
+	
+	theOS.saveMemoryContents("exe.mem");
+	
 	return 0;
 }
 

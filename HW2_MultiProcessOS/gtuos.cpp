@@ -3,27 +3,84 @@
 #include "8080emuCPP.h"
 #include "gtuos.h"
 
-GTUOS::GTUOS() {
+GTUOS::GTUOS(CPU8080* cpu8080) {
+
+  theCPU = cpu8080;
+  sprintf(processTable[0].name,"hmennOS");
+  processTable[0].state8080 = *(theCPU->state);
+  processTable[0].baseReg = 0;
+  processTable[0].limitReg = 0x1000000; // can access all 64K
+  processTable[0].pid = 2;
+  processTable[0].ppid = 2; // Parent of os is os
+  processTable[0].startTime = 0;
+  processTable[0].cycle = 0;
+  processTable[0].procState = ProcessState::RUNNING;
+  processTable[0].address = 0;
+
+  debugMode = 0;
+
 }
 
-uint64_t GTUOS::handleCall(const CPU8080& cpu8080){
+uint64_t GTUOS::run() {
 
-    uint8_t  regA = cpu8080.state->a;
-    int cycleTime=0;
+  uint64_t totalCycleTimes = 0;
 
-    //std::cout<<"Value of regA:"<<unsigned(regA)<<std::endl;
+  do {
+    totalCycleTimes += theCPU->Emulate8080p(debugMode);
 
-    switch (regA){
-        case PRINT_B: cycleTime = printB(cpu8080); break;
-        case PRINT_MEM: cycleTime = printMem(cpu8080); break;
-        case READ_B: cycleTime = readB(cpu8080); break;
-        case READ_MEM: cycleTime = readMem(cpu8080); break;
-        case PRINT_STR: cycleTime = printStr(cpu8080); break;
-        case READ_STR: cycleTime = readStr(cpu8080); break;
-        default: std::cerr<<"Invalid system call"<<std::endl; exit(EXIT_FAILURE);
-    }
+    if (theCPU->isSystemCall())
+      totalCycleTimes += this->handleCall();
 
-	return cycleTime;
+    if (debugMode == 2)
+      std::cin.get();
+
+  } while (!theCPU->isHalted());
+
+  return totalCycleTimes;
+}
+
+
+uint64_t GTUOS::handleCall() {
+
+  uint8_t regA = theCPU->state->a;
+  int cycleTime = 0;
+
+  //std::cout<<"Value of regA:"<<unsigned(regA)<<std::endl;
+
+  switch (regA) {
+  case SystemCallType::PRINT_B:
+    cycleTime = printB();
+    break;
+  case SystemCallType::PRINT_MEM:
+    cycleTime = printMem();
+    break;
+  case SystemCallType::READ_B:
+    cycleTime = readB();
+    break;
+  case SystemCallType::READ_MEM:
+    cycleTime = readMem();
+    break;
+  case SystemCallType::PRINT_STR:
+    cycleTime = printStr();
+    break;
+  case SystemCallType::READ_STR:
+    cycleTime = readStr();
+    break;
+  case SystemCallType::FORK:
+    cycleTime = this->fork();
+    break;
+  case SystemCallType::EXEC:
+    cycleTime = this->exec();
+    break;
+  case SystemCallType::WAITPID:
+    cycleTime = this->waitpid();
+    break;
+  default:
+    std::cerr << "Invalid system call" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  return cycleTime;
 }
 
 /**
@@ -31,28 +88,28 @@ uint64_t GTUOS::handleCall(const CPU8080& cpu8080){
  * @param cpu8080
  * @return cycle time of print b operation
  */
-int GTUOS::printB(const CPU8080& cpu8080){
-    std::cout<<"System Call PRINT_B"<<std::endl;
-    std::cout<<"Value of B(decimal): "<<int(cpu8080.state->b)<<std::endl;
-    return PRINT_B_CYCLE;
+uint8_t GTUOS::printB() {
+  std::cout << "System Call PRINT_B" << std::endl;
+  std::cout << "Value of B(decimal): " << int(theCPU->state->b) << std::endl;
+  return CycleTime::PRINT_B;
 }
 
 
-int GTUOS::readB(const CPU8080 &cpu8080) {
-    int b;
-    std::cout<<"System Call READ_B"<<std::endl;
+uint8_t GTUOS::readB() {
+  int b;
+  std::cout << "System Call READ_B" << std::endl;
 
 
-    std::cout<<"Enter an integer(0-255) for reg B:";
-    std::cin>>b;
+  std::cout << "Enter an integer(0-255) for reg B:";
+  std::cin >> b;
 
-    if(b<0 || b>255){
-        std::cout<<"uint8t -> Bound error. Assigned zero to b register"<<std::endl;
-        cpu8080.state->b=0;
-    }else
-        cpu8080.state->b = b;
+  if (b < 0 || b > 255) {
+    std::cout << "uint8t -> Bound error. Assigned zero to b register" << std::endl;
+    theCPU->state->b = 0;
+  } else
+    theCPU->state->b = b;
 
-    return READ_B_CYCLE;
+  return CycleTime::READ_B;
 }
 
 /**
@@ -60,119 +117,131 @@ int GTUOS::readB(const CPU8080 &cpu8080) {
  * @param cpu8080
  * @return cycle time of printstr
  */
-int GTUOS::printStr(const CPU8080 &cpu8080) {
-    std::cout<<"System Call PRINT_STR"<<std::endl;
+uint8_t GTUOS::printStr() {
+  std::cout << "System Call PRINT_STR" << std::endl;
 
-    uint16_t address = (cpu8080.state->b << 8) | cpu8080.state->c;
-    address = (cpu8080.state->b << 8) | cpu8080.state->c;
+  uint16_t address = (theCPU->state->b << 8) | theCPU->state->c;
+  address = (theCPU->state->b << 8) | theCPU->state->c;
 
-    /*another way to obtain hex address from register bc*/
-    /*
-    char addr[16];
-    sprintf(addr,"0x%x%x",cpu8080.state->b,cpu8080.state->c);
-    std::cout<<"Content of Register (address)BC: "<<addr<<std::endl;
-
-    std::string str(addr);
-    std::istringstream buff(addr);
-    uint64_t val;
-
-    buff >> std::hex >> val; // string to hex
-    */
-
-    while(true){
-        if(cpu8080.memory->at(address)=='\0'){
-            break;
-        }
-        std::cout<<cpu8080.memory->at(address);
-        ++address;
+  while (true) {
+    if (theCPU->memory->at(address) == '\0') {
+      break;
     }
+    std::cout << theCPU->memory->at(address);
+    ++address;
+  }
 
-    return PRINT_STR_CYCLE;
+  return CycleTime::PRINT_STR;
 }
 
-int GTUOS::readStr(const CPU8080 &cpu8080) {
-    std::string str;
-    int i;
-    uint16_t address;
-    std::cout<<"System Call READ_STR"<<std::endl;
+uint8_t GTUOS::readStr() {
+  std::string str;
+  int i;
+  uint16_t address;
+  std::cout << "System Call READ_STR" << std::endl;
 
-    getline(std::cin,str);
+  getline(std::cin, str);
 
-    address = (cpu8080.state->b << 8) | cpu8080.state->c;
+  address = (theCPU->state->b << 8) | theCPU->state->c;
 
-    for(i=0;i<str.length();++i){
-        cpu8080.memory->at(address+i) = str[i];
+  for (i = 0; i < str.length(); ++i) {
+    theCPU->memory->at(address + i) = str[i];
+  }
+  theCPU->memory->at((address++) + i) = '\n';
+  theCPU->memory->at(address + i) = '\0';
+
+  std::cout << "String writed on address:" << unsigned(address) << std::endl;
+  return CycleTime::READ_STR;
+}
+
+
+uint8_t GTUOS::printMem() {
+  char addr[16];
+  uint16_t address;
+  std::cout << "System Call PRINT_MEM" << std::endl;
+
+  address = (theCPU->state->b << 8) | theCPU->state->c;
+  std::cout << "Content of Register (address)BC: " << address << std::endl;
+
+  std::cout << "Memory content which pointed with BC:" << (int) theCPU->memory->at(address) << std::endl;
+
+  return CycleTime::PRINT_MEM;
+}
+
+
+uint8_t GTUOS::readMem() {
+  int number;
+  uint16_t address;
+  std::cout << "System Call READ_MEM" << std::endl;
+  std::cout << "Enter an integer(0-255) for MEM(BC)=:";
+  std::cin >> number;
+
+  address = (theCPU->state->b << 8) | theCPU->state->c;
+
+  if (number < 0 || number > 255) {
+    std::cout << "uint8t -> Bound error. Assigned zero to MEM(BC)" << std::endl;
+    theCPU->memory->at(address) = 0;
+  } else
+    theCPU->memory->at(address) = number;
+
+  std::cout << "Integer stored on memory[BC]:" << unsigned(address) << std::endl;
+  return CycleTime::READ_MEM;
+}
+
+
+void GTUOS::saveMemoryContents(const string& filename) {
+  std::ofstream output;
+
+  output.open(filename.c_str());
+  if (!output.is_open()) {
+      std::cerr << "Unable to open output file:" << filename << std::endl;
+      std::cerr << "Writing memory status is failed" << std::endl;
+      return;
+  }
+
+  for (int i = 0; i < 0x1000; ++i) {
+    char str[5];
+    sprintf(str, "%04x", i * 16);
+    output << str << " ";
+    for (int j = 0; j < 0x10; ++j) {
+      sprintf(str, "%02x", theCPU->memory->at(i * 16 + j));
+      output << str << " ";
     }
-    cpu8080.memory->at((address++)+i)='\n';
-    cpu8080.memory->at(address+i)='\0';
+    output << std::endl;
+  }
 
-    std::cout<<"String writed on address:"<<unsigned(address)<<std::endl;
-    return READ_STR_CYCLE;
+  output.close();
+
 }
 
+void GTUOS::test(const CPU8080 &cpu) {
 
+  char addr[10];
+  cpu.state->b = 0x00;
+  cpu.state->c = 0x40;
+  readMem();
+  printMem();
 
-int GTUOS::printMem(const CPU8080& cpu8080){
-    char addr[16];
-    uint16_t address;
-    std::cout<<"System Call PRINT_MEM"<<std::endl;
-
-    address = (cpu8080.state->b << 8) | cpu8080.state->c;
-    std::cout<<"Content of Register (address)BC: "<<address<<std::endl;
-
-    std::cout<<"Memory content which pointed with BC:"<<(int)cpu8080.memory->at(address)<<std::endl;
-
-    return PRINT_MEM_CYCLE;
+  sprintf(addr, "0x%x%x", cpu.state->b, cpu.state->c);
+  std::cout << addr;
+  readStr();
+  printStr();
 }
 
+uint8_t GTUOS::fork() {
 
-int GTUOS::readMem(const CPU8080 &cpu8080) {
-
-    int number;
-    uint16_t address;
-    std::cout<<"System Call READ_MEM"<<std::endl;
-    std::cout<<"Enter an integer(0-255) for MEM(BC)=:";
-    std::cin>>number;
-
-    address = (cpu8080.state->b << 8) | cpu8080.state->c;
-
-    if(number<0 || number>255){
-        std::cout<<"uint8t -> Bound error. Assigned zero to MEM(BC)"<<std::endl;
-        cpu8080.memory->at(address)=0;
-    }else
-        cpu8080.memory->at(address) = number;
-
-    std::cout<<"Integer stored on memory[BC]:"<<unsigned(address)<<std::endl;
 }
 
+uint8_t GTUOS::exec() {
 
-
-
-void GTUOS::saveMemoryContents(std::ofstream& output,const CPU8080& cpu){
-
-    for(int i=0;i<0x1000;++i){
-        char str[5];
-        sprintf(str,"%04x",i*16);
-        output<<str<<" ";
-        for(int j=0;j<0x10;++j) {
-            sprintf(str,"%02x",cpu.memory->at(i*16+j));
-            output << str << " ";
-        }
-        output<<std::endl;
-    }
 }
 
-void GTUOS::test(const CPU8080& cpu){
+uint8_t GTUOS::waitpid() {
 
-    char addr[10];
-    cpu.state->b=0x00;
-    cpu.state->c=0x40;
-    readMem(cpu);
-    printMem(cpu);
-
-    sprintf(addr,"0x%x%x",cpu.state->b,cpu.state->c);
-    std::cout<<addr;
-    readStr(cpu);
-    printStr(cpu);
 }
+
+void GTUOS::setDebugMode(uint8_t mode) {
+  debugMode = mode;
+}
+
 
