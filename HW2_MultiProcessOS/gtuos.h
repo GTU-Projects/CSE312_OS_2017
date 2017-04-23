@@ -8,6 +8,16 @@
 #define MAX_PROC_NAME 255
 #define MAX_PROC_COUNT 4
 
+// for colored texts
+#define RED   "\x1B[31m"
+#define GRN   "\x1B[32m"
+#define YEL   "\x1B[33m"
+#define BLU   "\x1B[34m"
+#define MAG   "\x1B[35m"
+#define CYN   "\x1B[36m"
+#define WHT   "\x1B[37m"
+#define RESET "\x1B[0m"
+
 using namespace std;
 
 
@@ -64,6 +74,7 @@ public:
     GTUOS(CPU8080* cpu8080);
     uint64_t handleCall();
     void saveMemoryContents(const string& filename);
+    void saveProcInfos(const string& filename);
 
     void setDebugMode(uint8_t mode);
     uint64_t run();
@@ -87,6 +98,7 @@ private:
     uint8_t waitpid();
 
     void printProcInfs(uint64_t ind) const;
+    void dupeMemory(uint64_t f, uint64_t t); // from f to t
 };
 
 #endif
