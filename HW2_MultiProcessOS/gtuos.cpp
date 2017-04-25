@@ -3,6 +3,8 @@
 #include "8080emuCPP.h"
 #include "gtuos.h"
 
+#define TEST_ASM "./asm/sum.com"
+
 GTUOS::GTUOS(CPU8080* cpu8080) {
 
   theCPU = cpu8080;
@@ -319,7 +321,7 @@ uint8_t GTUOS::fork() {
 
   theCPU->state->a = processTable[nextEmpty].pid; // return child pid to parent
 
-  // dupe parent memory to child
+  // copy parent memory to child
   copyMemory(processTable[currProcInd].address, processTable[nextEmpty].address);
 
   // print process informations for test
@@ -332,6 +334,16 @@ uint8_t GTUOS::fork() {
 
 uint8_t GTUOS::exec() {
 
+  printf(GRN "SystemCall: EXEC\n" RESET );
+
+  // read new program into memory
+  strcpy(processTable[currProcInd].name,TEST_ASM); // set process name
+
+
+  theCPU->ReadFileIntoMemoryAt(TEST_ASM,((Memory*)(theCPU->memory))->getBaseRegister());
+  bzero(theCPU->state,sizeof(State8080)); // reset registers
+
+  return CycleTime::EXEC;
 }
 
 uint8_t GTUOS::waitpid() {
