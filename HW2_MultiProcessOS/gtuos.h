@@ -10,6 +10,10 @@
 #define MAX_PROC_COUNT 4
 #define CS_CYCLE 100 // context switch cycle
 
+// log settings
+#define LOG_FD stdout
+#define DEBUG 1
+
 // for colored texts
 #define RED   "\x1B[31m"
 #define GRN   "\x1B[32m"
@@ -100,11 +104,15 @@ private:
     uint8_t waitpid();
 
     void printProcInfs(uint64_t ind) const;
-    void dupeMemory(uint64_t f, uint64_t t); // from f to t
 
-    bool isAllProcessesDone() const;
-    void contextSwitch(uint8_t p1, uint8_t p2); // p1 -> p2
     uint8_t getNextProcInd() const;
+    bool isAllProcessesDone() const;
+
+
+    void contextSwitch(uint8_t p1, uint8_t p2); // p1 -> p2
+    void copyCurrProcState(uint8_t p1);
+    void copyMemory(uint64_t f, uint64_t t); // from f to t
+
 };
 
 #endif

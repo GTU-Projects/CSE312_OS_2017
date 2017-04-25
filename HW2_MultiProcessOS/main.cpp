@@ -4,7 +4,7 @@
 #include "gtuos.h"
 #include "memory.h"
 
-#define DEBUG
+
 
 int main (int argc, char**argv)
 {

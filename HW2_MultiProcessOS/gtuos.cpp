@@ -50,20 +50,23 @@ uint64_t GTUOS::run() {
     totalCycleTimes += cycle = theCPU->Emulate8080p(debugMode);
     //cout << RED << "Cycle:" << totalCycleTimes << RESET << endl;
 
-    if (theCPU->isSystemCall()){
+    if (theCPU->isSystemCall()) {
       totalCycleTimes += cycle += this->handleCall();
     }
 
     if (theCPU->isHalted()) // mark process is dead
       processTable[currProcInd].isAlive = false;
 
-    printf("I:%d - PC:%x - Mem:%x\n",currProcInd,theCPU->state->pc,theCPU->memory->at(theCPU->state->pc));
+    //printf("I:%d - PC:%x - Mem:%x\n",currProcInd,theCPU->state->pc,theCPU->memory->at(theCPU->state->pc));
 
     // count round-robin cycle
     csCycle += cycle;
     if (csCycle >= CS_CYCLE) {
-      contextSwitch(currProcInd, getNextProcInd());
-      csCycle = csCycle % CS_CYCLE;
+      int nextProcIndex = getNextProcInd();
+      if (currProcInd != nextProcIndex) {
+        contextSwitch(currProcInd, nextProcIndex);
+        csCycle = csCycle % CS_CYCLE;
+      }
     }
 
 
@@ -81,7 +84,7 @@ void GTUOS::contextSwitch(uint8_t p1, uint8_t p2) {
   processTable[p1].procState = READY;
 
   *(theCPU->state) = processTable[p2].state8080;
-  processTable[p2].procState=RUNNING;
+  processTable[p2].procState = RUNNING;
 
   Memory *mem = (Memory*)theCPU->memory;
   mem->setBaseResister(processTable[p2].baseReg);
@@ -268,11 +271,37 @@ void GTUOS::test(const CPU8080 &cpu) {
   printStr();
 }
 
+// switch cpu state with p1 process
+void GTUOS::copyCurrProcState(uint8_t p1) {
+  // copy all needed datas
+  processTable[p1].state8080 = *(theCPU->state); // copy current state
+
+  processTable[p1].state8080.cc = theCPU->state->cc; // copy condition codes
+  //printf("%d-%d", processTable[p1].state8080.cc.cy, theCPU->state->cc.cy);
+
+  strcat(processTable[p1].name, "_clone");
+  processTable[p1].baseReg = 0x4000 * p1; // 4KB per process
+  processTable[p1].limitReg = 0x4000 * (p1 + 1) - 1;
+  processTable[p1].pid = p1 + 2;
+  processTable[p1].ppid = processTable[currProcInd].pid;
+  processTable[p1].procState = READY;
+  processTable[p1].address = processTable[p1].baseReg;
+  processTable[p1].isAlive = 1;
+
+  // prepare returned pid values
+  processTable[p1].state8080.a = 0; // return 0 to child
+
+#ifdef DEBUG
+  fprintf(LOG_FD, "Current Process state copied into processTable[%d]\n",p1);
+#endif
+
+}
+
 uint8_t GTUOS::fork() {
 
   printf(GRN "SystemCall: FORK\n" RESET);
 
-  int nextEmpty = -1; // next empty area for process
+  uint8_t nextEmpty = -1; // next empty area for process
   // get nex empty location
   for (uint8_t i = 0; i < MAX_PROC_COUNT; ++i) {
     if (i != currProcInd && !processTable[i].isAlive) {
@@ -286,25 +315,12 @@ uint8_t GTUOS::fork() {
     return nextEmpty;
   }
 
+  copyCurrProcState(nextEmpty);
 
-  // copy all needed datas
-  processTable[nextEmpty].state8080 = *(theCPU->state);
-
-  strcat(processTable[nextEmpty].name, "_clone");
-  processTable[nextEmpty].baseReg = 0x4000 * nextEmpty; // 4KB per process
-  processTable[nextEmpty].limitReg = 0x4000 * (nextEmpty + 1) - 1;
-  processTable[nextEmpty].pid = nextEmpty + 2;
-  processTable[nextEmpty].ppid = processTable[currProcInd].pid;
-  processTable[nextEmpty].procState = READY;
-  processTable[nextEmpty].address = processTable[nextEmpty].baseReg;
-  processTable[nextEmpty].isAlive = 1;
-  
-  // prepare returned pid values
-  processTable[nextEmpty].state8080.a = 0; // return 0 to child
   theCPU->state->a = processTable[nextEmpty].pid; // return child pid to parent
 
   // dupe parent memory to child
-  dupeMemory(processTable[currProcInd].address, processTable[nextEmpty].address);
+  copyMemory(processTable[currProcInd].address, processTable[nextEmpty].address);
 
   // print process informations for test
 #ifdef DEBUG
@@ -333,9 +349,9 @@ void GTUOS::printProcInfs(uint64_t ind) const {
 }
 
 // copy 16K memory from x to y
-void GTUOS::dupeMemory(uint64_t f, uint64_t t) {
+void GTUOS::copyMemory(uint64_t f, uint64_t t) {
 
-  for (uint32_t i = 0; i < 0x4000; ++i){
+  for (uint32_t i = 0; i < 0x4000; ++i) {
     theCPU->memory->physicalAt(t + i) = theCPU->memory->physicalAt(f + i);
   }
 

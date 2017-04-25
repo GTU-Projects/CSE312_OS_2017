@@ -28,10 +28,10 @@ stack   equ 0F00H
 GTU_OS:	PUSH D
 	push D
 	push H
-	push psw
+	push H
 	nop	; This is where we run our OS in C++, see the CPU8080::isSystemCall()
 		; function for the detail.
-	pop psw
+	pop H
 	pop h
 	pop d
 	pop D
@@ -56,22 +56,20 @@ begin:
 	call GTU_OS ; system call
 
 LOOP:
-	MVI B, 10H
-	MVI C, 00H
-	MVI A, READ_STR
-	call GTU_OS
+	;MVI B, 10H
+	;MVI C, 00H
+	;MVI A, READ_STR
+	;call GTU_OS
 
 	MVI A, FORK ; store system call type
 	call GTU_OS ; system call
 
-	PUSH B
 	MVI B, 1 ; load 1 to reg b, for error chech
 	CMP B ; if returned pid is 1, there is a fork error
 	JZ ERROR_EXIT 
 
 	MVI B, 0 ; 
 	CMP B ; if pid==0 go child area, else parent area
-	POP B ; restore b
 	JZ CHILD_AREA
 	JMP PARENT_AREA
 
