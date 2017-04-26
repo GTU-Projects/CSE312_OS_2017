@@ -4,8 +4,6 @@
 #include "gtuos.h"
 #include "memory.h"
 
-
-
 int main (int argc, char**argv)
 {
 	if (argc != 3){

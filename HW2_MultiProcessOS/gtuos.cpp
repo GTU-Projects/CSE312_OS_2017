@@ -42,32 +42,58 @@ uint64_t GTUOS::run() {
   uint64_t totalCycleTimes = 0;
   uint16_t csCycle = 0; //context switch cycle
   uint16_t cycle = 0;
+  bool makeSwitch=false;
 
 
   do {
+    makeSwitch=false;
+
+    #ifdef DEBUG
+      fprintf(LOG_FD, "Proc Index:%d\n", currProcInd);
+      fprintf(LOG_FD, "PC:%d\n",theCPU->state->pc);
+    #endif
+
+    ProcessState st = processTable[currProcInd].procState;
 
     if (debugMode == 2)
       std::cin.get();
 
-    totalCycleTimes += cycle = theCPU->Emulate8080p(debugMode);
+    // wait durumunda değilse sıradaki inst gec
+    // diğer durumlarda waiti kontrol et
+    if(st!=BLOCKED){
+      totalCycleTimes += cycle = theCPU->Emulate8080p(debugMode);
+    }
     //cout << RED << "Cycle:" << totalCycleTimes << RESET << endl;
 
     if (theCPU->isSystemCall()) {
       totalCycleTimes += cycle += this->handleCall();
+
+      st = processTable[currProcInd].procState;
+      
+      if(st==BLOCKED){ // wait pid state
+        int nextProcIndex = getNextProcInd(); //block durumunda olmayan proc getir
+        if (currProcInd != nextProcIndex) {
+          contextSwitch(currProcInd, nextProcIndex);
+          csCycle = csCycle % CS_CYCLE;
+        }
+        continue;
+      }
     }
 
-    if (theCPU->isHalted()) // mark process is dead
+    if (theCPU->isHalted()){ // mark process is dead
       processTable[currProcInd].isAlive = false;
-
-    //printf("I:%d - PC:%x - Mem:%x\n",currProcInd,theCPU->state->pc,theCPU->memory->at(theCPU->state->pc));
+      printf(RED "Process:%d dead\n" RESET ,currProcInd );
+      makeSwitch=true; // if child dead, switch context
+    }
 
     // count round-robin cycle
     csCycle += cycle;
-    if (csCycle >= CS_CYCLE) {
+    if (csCycle >= CS_CYCLE || makeSwitch) {
       int nextProcIndex = getNextProcInd();
       if (currProcInd != nextProcIndex) {
         contextSwitch(currProcInd, nextProcIndex);
         csCycle = csCycle % CS_CYCLE;
+        makeSwitch=false; 
       }
     }
 
@@ -83,10 +109,10 @@ void GTUOS::contextSwitch(uint8_t p1, uint8_t p2) {
   std::cout << BLU << "Context switch occur betwwen p1:" << (int)p1 << ", p2:" << (int)p2 << RESET << std::endl;
 
   processTable[p1].state8080 = *(theCPU->state);
-  processTable[p1].procState = READY;
+  //processTable[p1].procState = READY;
 
   *(theCPU->state) = processTable[p2].state8080;
-  processTable[p2].procState = RUNNING;
+  //processTable[p2].procState = RUNNING;
 
   Memory *mem = (Memory*)theCPU->memory;
   mem->setBaseResister(processTable[p2].baseReg);
@@ -290,8 +316,8 @@ void GTUOS::copyCurrProcState(uint8_t p1) {
   processTable[p1].address = processTable[p1].baseReg;
   processTable[p1].isAlive = 1;
 
-  // prepare returned pid values
-  processTable[p1].state8080.a = 0; // return 0 to child
+  // prepare returned pid values  
+  processTable[p1].state8080.b = 0; // return 0 to child
 
 #ifdef DEBUG
   fprintf(LOG_FD, "Current Process state copied into processTable[%d]\n",p1);
@@ -313,13 +339,13 @@ uint8_t GTUOS::fork() {
   }
 
   if (nextEmpty == -1) { // memory full or other errors ...
-    theCPU->state->a = 1;
+    theCPU->state->b = 1;
     return nextEmpty;
   }
 
   copyCurrProcState(nextEmpty);
 
-  theCPU->state->a = processTable[nextEmpty].pid; // return child pid to parent
+  theCPU->state->b = processTable[nextEmpty].pid; // return child pid to parent
 
   // copy parent memory to child
   copyMemory(processTable[currProcInd].address, processTable[nextEmpty].address);
@@ -339,7 +365,6 @@ uint8_t GTUOS::exec() {
   // read new program into memory
   strcpy(processTable[currProcInd].name,TEST_ASM); // set process name
 
-
   theCPU->ReadFileIntoMemoryAt(TEST_ASM,((Memory*)(theCPU->memory))->getBaseRegister());
   bzero(theCPU->state,sizeof(State8080)); // reset registers
 
@@ -347,7 +372,16 @@ uint8_t GTUOS::exec() {
 }
 
 uint8_t GTUOS::waitpid() {
+  printf(GRN "SystemCall: WAITPID\n" RESET);
 
+  // yasayan cocuk varsa block durumunda kal
+  if(processTable[1].isAlive){
+    printf("PC:%d\n",(int)theCPU->state->pc);
+    processTable[currProcInd].procState=BLOCKED;
+    return 0; // wait time
+  }
+
+  return CycleTime::WAITPID;
 }
 
 void GTUOS::setDebugMode(uint8_t mode) {

@@ -57,6 +57,7 @@ typedef struct {
     ProcessState  procState; // ready, blocked, running
     uint64_t address;   //physical addres of the memory location of process
     uint8_t isAlive;
+    uint8_t childNum;
 } ProcessInfo;
 
 class CycleTime {
