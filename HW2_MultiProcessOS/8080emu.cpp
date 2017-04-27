@@ -2277,7 +2277,7 @@ unsigned CPU8080::Emulate8080p(int debug) {
 void CPU8080::ReadFileIntoMemoryAt(const char *filename, uint32_t offset) {
   FILE *f = fopen(filename, "rb");
   if (f == NULL) {
-    printf("error: Couldn't open %s\n", filename);
+    printf("error: Couldn't open %s--\n", filename);
     exit(1);
   }
   fseek(f, 0L, SEEK_END);

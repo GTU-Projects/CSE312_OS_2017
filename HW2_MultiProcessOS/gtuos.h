@@ -9,6 +9,7 @@
 #define MAX_PROC_NAME 255
 #define MAX_PROC_COUNT 4
 #define CS_CYCLE 100 // context switch cycle
+#define MAX_PATH_LEN 255
 
 // log settings
 #define LOG_FD stdout
@@ -80,7 +81,7 @@ public:
 class GTUOS {
 
 public:
-    GTUOS(CPU8080* cpu8080);
+    GTUOS(CPU8080* cpu8080,const char *initialName);
     uint64_t handleCall();
     void saveMemoryContents(const string& filename);
     void saveProcInfos(const string& filename);

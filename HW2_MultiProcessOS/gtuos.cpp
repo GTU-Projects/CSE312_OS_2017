@@ -5,14 +5,13 @@
 
 #define TEST_ASM "./asm/sum.com"
 
-GTUOS::GTUOS(CPU8080* cpu8080) {
+GTUOS::GTUOS(CPU8080* cpu8080, const char *initialName) {
 
   theCPU = cpu8080;
   processTable = (ProcessInfo *)calloc(sizeof(ProcessInfo), MAX_PROC_COUNT);
   // calloc already resets the allocated area
   //bzero(processTable,MAX_PROC_COUNT*sizeof(ProcessInfo));
-
-  sprintf(processTable[0].name, "hmennOS");
+  strcpy(processTable[0].name, initialName);
   processTable[0].state8080 = *(theCPU->state);
   processTable[0].baseReg = 0;
   processTable[0].limitReg = 0x10000 - 1; // can access all 64K
@@ -212,7 +211,6 @@ uint8_t GTUOS::printStr() {
   std::cout << GRN << "SystemCall: PRINT_STR" << RESET << std::endl;
 
   uint16_t address = (theCPU->state->b << 8) | theCPU->state->c;
-  address = (theCPU->state->b << 8) | theCPU->state->c;
 
   while (true) {
     if (theCPU->memory->at(address) == '\0') {
@@ -238,7 +236,6 @@ uint8_t GTUOS::readStr() {
   for (i = 0; i < str.length(); ++i) {
     theCPU->memory->at(address + i) = str[i];
   }
-  theCPU->memory->at((address++) + i) = '\n';
   theCPU->memory->at(address + i) = '\0';
 
   std::cout << "String writed on address:" << unsigned(address) << std::endl;
@@ -356,13 +353,33 @@ uint8_t GTUOS::fork() {
 }
 
 uint8_t GTUOS::exec() {
-
+  char filename[MAX_PATH_LEN];
+  int i=0;
   printf(GRN "SystemCall: EXEC\n" RESET );
 
-  // read new program into memory
-  strcpy(processTable[currProcInd].name, TEST_ASM); // set process name
+  bzero(filename,MAX_PATH_LEN);
 
-  theCPU->ReadFileIntoMemoryAt(TEST_ASM, ((Memory*)(theCPU->memory))->getBaseRegister());
+  uint16_t address = (theCPU->state->b << 8) | theCPU->state->c;
+
+  while (true) {
+    if (theCPU->memory->at(address) == '\0') {
+      break;
+    }
+    filename[i] = theCPU->memory->at(address);
+    ++i;
+    ++address;
+  }
+
+  filename[i]='\0';
+
+  if(strcmp(filename,"exit()")==0){
+    printf(RED "EXIT FORCED\n" RESET);
+    exit(1);
+  }
+  // read new program into memory
+  strcpy(processTable[currProcInd].name, filename); // set process name
+
+  theCPU->ReadFileIntoMemoryAt(filename, ((Memory*)(theCPU->memory))->getBaseRegister());
   bzero(theCPU->state, sizeof(State8080)); // reset registers
 
   return CycleTime::EXEC;

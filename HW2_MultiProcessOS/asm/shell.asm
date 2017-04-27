@@ -28,12 +28,12 @@ stack   equ 0F00H
 GTU_OS:	PUSH D
 	push D
 	push H
-	push H
+	push psw
 	nop	; This is where we run our OS in C++, see the CPU8080::isSystemCall()
 		; function for the detail.
+	pop psw
 	pop H
-	pop h
-	pop d
+	pop D
 	pop D
 	ret
 	; ---------------------------------------------------------------
@@ -47,6 +47,9 @@ bye_msg:	DW '##-->good bye',00AH,00H
 out_hello:	DW '##-->Welcome simple shell program',00AH,00H
 parent_msg:	DW '##-->Parent',00AH,00H
 child_msg:	DW '##-->Child',00AH,00H
+wait_pid:	DB 0
+
+	ORG 0100H
 
 begin:
 	LXI SP,stack 	; always initialize the stack pointer
@@ -56,53 +59,48 @@ begin:
 	call GTU_OS ; system call
 
 LOOP:
-	;MVI B, 10H
-	;MVI C, 00H
-	;MVI A, READ_STR
-	;call GTU_OS
+	LXI B,in_take_msg
+	MVI A, PRINT_STR ; store system call type
+	call GTU_OS ; system call
+
+	MVI B, 30H
+	MVI C, 00H
+	MVI A, READ_STR
+	call GTU_OS
 
 	MVI A, FORK ; store system call type
 	call GTU_OS ; system call
 
-	MVI B, 1 ; load 1 to reg b, for error chech
+	MVI A, 1 ; load 1 to reg a, for error chech
 	CMP B ; if returned pid is 1, there is a fork error
 	JZ ERROR_EXIT 
 
-	MVI B, 0 ; 
+	MVI A, 0 ; 
 	CMP B ; if pid==0 go child area, else parent area
 	JZ CHILD_AREA
 	JMP PARENT_AREA
 
 PARENT_AREA:
-	LXI B,parent_msg
-	MVI A, PRINT_STR ; store system call type
-	call GTU_OS ; system call
-
 	MVI A, WAITPID ; wait until child finish
 	call GTU_OS ; system call
-	JMP ERROR_EXIT	
+	
+	JMP LOOP ; go and take new command
 
 CHILD_AREA:
-	LXI B,child_msg
-	MVI A, PRINT_STR ; store system call type
-	call GTU_OS ; system call
-
+	MVI B, 30H
+	MVI C, 00H
 	MVI A, EXEC ; call execve to run new program
 	call GTU_OS ; system call
 	JMP ERROR_EXIT	
 	
 	; READ USE AGE AND PRINT SCREEN
-	LXI B,bye_msg ; test for PRINT_STR
-	MVI A, PRINT_STR ; store system call type
-	call GTU_OS ; system call
-	JMP END
-
+	;LXI B,bye_msg ; test for PRINT_STR
+	;MVI A, PRINT_STR ; store system call type
+	;call GTU_OS ; system call
+	;JMP END
 
 ERROR_EXIT:
 	
-
-
-
 
 END:
 	hlt    ; end program

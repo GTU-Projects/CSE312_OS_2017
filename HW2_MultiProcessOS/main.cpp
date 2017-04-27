@@ -15,7 +15,7 @@ int main (int argc, char**argv)
 
 	Memory mem(0x1000000); // create 64K memory
 	CPU8080 theCPU(&mem);
-	GTUOS	theOS(&theCPU);
+	GTUOS	theOS(&theCPU,argv[1]);
 	
 
 	theCPU.ReadFileIntoMemoryAt(argv[1], 0x0000); // initialize memory
