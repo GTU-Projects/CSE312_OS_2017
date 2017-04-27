@@ -12,7 +12,7 @@
 
 // log settings
 #define LOG_FD stdout
-#define DEBUG 1
+//#define DEBUG 1
 
 // for colored texts
 #define RED   "\x1B[31m"
@@ -45,6 +45,7 @@ typedef enum {
     RUNNING = 2
 } ProcessState;
 
+
 typedef struct {
     char name[MAX_PROC_NAME];
     State8080 state8080;    // saved registers like a,b,c,sp,pc
@@ -58,6 +59,7 @@ typedef struct {
     uint64_t address;   //physical addres of the memory location of process
     uint8_t isAlive;
     uint8_t childNum;
+    uint16_t waitIndex;
 } ProcessInfo;
 
 class CycleTime {

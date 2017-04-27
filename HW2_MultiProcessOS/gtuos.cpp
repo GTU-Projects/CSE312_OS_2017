@@ -23,10 +23,10 @@ GTUOS::GTUOS(CPU8080* cpu8080) {
   processTable[0].procState = RUNNING;
   processTable[0].address = 0;
   processTable[0].isAlive = 1;
+  processTable[0].waitIndex = 0;
 
   debugMode = 0;
   currProcInd = 0;
-
 }
 
 bool GTUOS::isAllProcessesDone()const {
@@ -42,64 +42,57 @@ uint64_t GTUOS::run() {
   uint64_t totalCycleTimes = 0;
   uint16_t csCycle = 0; //context switch cycle
   uint16_t cycle = 0;
-  bool makeSwitch=false;
-
+  uint16_t nextIndex;
+  bool makeSwitch = false;
 
   do {
-    makeSwitch=false;
-
-    #ifdef DEBUG
-      fprintf(LOG_FD, "Proc Index:%d\n", currProcInd);
-      fprintf(LOG_FD, "PC:%d\n",theCPU->state->pc);
-    #endif
-
-    ProcessState st = processTable[currProcInd].procState;
 
     if (debugMode == 2)
       std::cin.get();
+    ProcessState st = processTable[currProcInd].procState;
 
-    // wait durumunda değilse sıradaki inst gec
-    // diğer durumlarda waiti kontrol et
-    if(st!=BLOCKED){
-      totalCycleTimes += cycle = theCPU->Emulate8080p(debugMode);
-    }
-    //cout << RED << "Cycle:" << totalCycleTimes << RESET << endl;
+#ifdef DEBUG
+    printf("Process Index:%d\n", currProcInd);
+    printf("State:%d\n", st );
+#endif
+
+    totalCycleTimes += cycle += theCPU->Emulate8080p(debugMode);
 
     if (theCPU->isSystemCall()) {
       totalCycleTimes += cycle += this->handleCall();
+      //    if (processTable[currProcInd].procState == BLOCKED)
+      //      processTable
+    }
 
-      st = processTable[currProcInd].procState;
-      
-      if(st==BLOCKED){ // wait pid state
-        int nextProcIndex = getNextProcInd(); //block durumunda olmayan proc getir
-        if (currProcInd != nextProcIndex) {
-          contextSwitch(currProcInd, nextProcIndex);
-          csCycle = csCycle % CS_CYCLE;
-        }
-        continue;
+
+    st = processTable[currProcInd].procState;
+
+    if ((cycle / CS_CYCLE) > 0 || st == BLOCKED) { // round robin context switch cycle
+      cycle = cycle % CS_CYCLE;
+      nextIndex = getNextProcInd();
+      if (nextIndex != currProcInd) // no need if same proc
+        contextSwitch(currProcInd, nextIndex);
+
+
+      continue;
+    }
+
+
+    if (theCPU->isHalted() ) {
+      processTable[currProcInd].isAlive = false; // process dead
+      // send signal to parent
+      if (currProcInd != 0) {
+        processTable[processTable[currProcInd].ppid - 2].procState = READY;
       }
+      printf(RED "Process:%d dead\n" RESET , currProcInd );
+      nextIndex = getNextProcInd();
+      if (nextIndex != currProcInd)
+        contextSwitch(currProcInd, nextIndex);
     }
-
-    if (theCPU->isHalted()){ // mark process is dead
-      processTable[currProcInd].isAlive = false;
-      printf(RED "Process:%d dead\n" RESET ,currProcInd );
-      makeSwitch=true; // if child dead, switch context
-    }
-
-    // count round-robin cycle
-    csCycle += cycle;
-    if (csCycle >= CS_CYCLE || makeSwitch) {
-      int nextProcIndex = getNextProcInd();
-      if (currProcInd != nextProcIndex) {
-        contextSwitch(currProcInd, nextProcIndex);
-        csCycle = csCycle % CS_CYCLE;
-        makeSwitch=false; 
-      }
-    }
-
 
 
   } while (!isAllProcessesDone());
+
 
   return totalCycleTimes;
 }
@@ -109,10 +102,12 @@ void GTUOS::contextSwitch(uint8_t p1, uint8_t p2) {
   std::cout << BLU << "Context switch occur betwwen p1:" << (int)p1 << ", p2:" << (int)p2 << RESET << std::endl;
 
   processTable[p1].state8080 = *(theCPU->state);
-  //processTable[p1].procState = READY;
+  if (processTable[p1].procState != BLOCKED) // bloklanmadıysa, devam
+    processTable[p1].procState = READY;
+
 
   *(theCPU->state) = processTable[p2].state8080;
-  //processTable[p2].procState = RUNNING;
+  processTable[p2].procState = RUNNING;
 
   Memory *mem = (Memory*)theCPU->memory;
   mem->setBaseResister(processTable[p2].baseReg);
@@ -123,12 +118,12 @@ void GTUOS::contextSwitch(uint8_t p1, uint8_t p2) {
 
 uint8_t GTUOS::getNextProcInd() const {
   for (uint8_t i = currProcInd + 1; i < MAX_PROC_COUNT; ++i)
-    if (processTable[i].isAlive) // get next proc which is live
+    if (processTable[i].isAlive && processTable[i].procState == READY) // get next proc which is live
       return i;
 
   // if there is not alive process forward locations , look backwards
   for (uint8_t i = 0; i < currProcInd; ++i)
-    if (processTable[i].isAlive)
+    if (processTable[i].isAlive && processTable[i].procState == READY)
       return i;
 
   // there is just one process
@@ -316,11 +311,11 @@ void GTUOS::copyCurrProcState(uint8_t p1) {
   processTable[p1].address = processTable[p1].baseReg;
   processTable[p1].isAlive = 1;
 
-  // prepare returned pid values  
+  // prepare returned pid values
   processTable[p1].state8080.b = 0; // return 0 to child
 
 #ifdef DEBUG
-  fprintf(LOG_FD, "Current Process state copied into processTable[%d]\n",p1);
+  fprintf(LOG_FD, "Current Process state copied into processTable[%d]\n", p1);
 #endif
 
 }
@@ -347,6 +342,8 @@ uint8_t GTUOS::fork() {
 
   theCPU->state->b = processTable[nextEmpty].pid; // return child pid to parent
 
+  processTable[currProcInd].waitIndex = nextEmpty;
+
   // copy parent memory to child
   copyMemory(processTable[currProcInd].address, processTable[nextEmpty].address);
 
@@ -363,10 +360,10 @@ uint8_t GTUOS::exec() {
   printf(GRN "SystemCall: EXEC\n" RESET );
 
   // read new program into memory
-  strcpy(processTable[currProcInd].name,TEST_ASM); // set process name
+  strcpy(processTable[currProcInd].name, TEST_ASM); // set process name
 
-  theCPU->ReadFileIntoMemoryAt(TEST_ASM,((Memory*)(theCPU->memory))->getBaseRegister());
-  bzero(theCPU->state,sizeof(State8080)); // reset registers
+  theCPU->ReadFileIntoMemoryAt(TEST_ASM, ((Memory*)(theCPU->memory))->getBaseRegister());
+  bzero(theCPU->state, sizeof(State8080)); // reset registers
 
   return CycleTime::EXEC;
 }
@@ -374,13 +371,16 @@ uint8_t GTUOS::exec() {
 uint8_t GTUOS::waitpid() {
   printf(GRN "SystemCall: WAITPID\n" RESET);
 
-  // yasayan cocuk varsa block durumunda kal
-  if(processTable[1].isAlive){
-    printf("PC:%d\n",(int)theCPU->state->pc);
-    processTable[currProcInd].procState=BLOCKED;
+  // wait process index
+  uint16_t index = processTable[currProcInd].waitIndex;
+
+  if (processTable[index].isAlive) {
+    printf("Parent will wait for pid:%d\n", processTable[index].pid);
+    processTable[currProcInd].procState = BLOCKED;
     return 0; // wait time
   }
 
+  processTable[currProcInd].procState = READY;
   return CycleTime::WAITPID;
 }
 
