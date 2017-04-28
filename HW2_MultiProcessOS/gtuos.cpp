@@ -50,6 +50,7 @@ uint64_t GTUOS::run() {
       std::cin.get();
     ProcessState st = processTable[currProcInd].procState;
 
+
 #ifdef DEBUG
     printf("Process Index:%d\n", currProcInd);
     printf("State:%d\n", st );
@@ -59,10 +60,15 @@ uint64_t GTUOS::run() {
 
     if (theCPU->isSystemCall()) {
       totalCycleTimes += cycle += this->handleCall();
-      //    if (processTable[currProcInd].procState == BLOCKED)
-      //      processTable
     }
 
+    if ((cycle / CS_CYCLE) > 0 || st == BLOCKED) { // round robin context switch cycle
+      cycle = cycle % CS_CYCLE;
+      nextIndex = getNextProcInd();
+      if (nextIndex != currProcInd) // no need if same proc
+        contextSwitch(currProcInd, nextIndex);
+      continue;
+    }
 
     if (theCPU->isHalted() ) {
       processTable[currProcInd].isAlive = false; // process dead
@@ -82,14 +88,8 @@ uint64_t GTUOS::run() {
       nextIndex = getNextProcInd();
       if (nextIndex != currProcInd) // no need if same proc
         contextSwitch(currProcInd, nextIndex);
-
-
       continue;
     }
-
-
-
-
 
   } while (!isAllProcessesDone());
 
@@ -191,9 +191,9 @@ uint8_t GTUOS::readB() {
   std::cout << "SystemCall: READ_B" << std::endl;
 
   std::cout << "Enter an integer(0-255) for reg B:";
-  scanf("%d",&b);
+  scanf("%d", &b);
 
-  printf(RED "B:%d\n" RESET,b );
+  printf(RED "B:%d\n" RESET, b );
 
   if (b < 0 || b > 255) {
     std::cout << "uint8t -> Bound error. Assigned zero to b register" << std::endl;
@@ -232,7 +232,7 @@ uint8_t GTUOS::readStr() {
   std::cout << GRN << "SystemCall: READ_STR" << RESET << std::endl;
   std::cout << "Enter a string: ";
 
-  scanf(" %[^\n]s",str); // updated for junk whitespaces
+  scanf(" %[^\n]s", str); // updated for junk whitespaces
 
   printf(RED "-%s-\n" RESET, str );
 
@@ -344,8 +344,6 @@ uint8_t GTUOS::fork() {
 
   theCPU->state->b = processTable[nextEmpty].pid; // return child pid to parent
 
-  processTable[currProcInd].waitIndex = nextEmpty;
-
   // copy parent memory to child
   copyMemory(processTable[currProcInd].address, processTable[nextEmpty].address);
 
@@ -391,16 +389,18 @@ uint8_t GTUOS::exec() {
 }
 
 uint8_t GTUOS::waitpid() {
+
+  uint8_t i = 0, index = 0;
   printf(GRN "SystemCall: WAITPID\n" RESET);
 
   // wait process index
-  uint16_t index = processTable[currProcInd].waitIndex;
-
-  if (processTable[index].isAlive) {
-    printf("Parent will wait for pid:%d\n", processTable[index].pid);
-    processTable[currProcInd].procState = BLOCKED;
-    return 0; // wait time
-  }
+  uint8_t b = theCPU->state->b; // get wait pid
+  for (i = 0; i < MAX_PROC_COUNT; ++i)
+    if (processTable[i].isAlive && processTable[i].pid == b) {
+      printf("Parent will wait for pid:%d\n", processTable[i].pid);
+      processTable[currProcInd].procState = BLOCKED;
+      return 0; // wait time
+    }
 
   processTable[currProcInd].procState = READY;
   return CycleTime::WAITPID;
