@@ -27,9 +27,8 @@ int main (int argc, char**argv)
 
 	theOS.saveMemoryContents("exe.mem");
 
-#ifdef DEBUG
-	theOS.saveProcInfos("proc.info");
-#endif
+	// PARALLEL ASM calıstıgında proces bilgileri buraya da eklenir
+	theOS.saveProcInfos("proc_list.txt");
 
 	return 0;
 }

@@ -46,7 +46,9 @@ out_hello:	DW '##-->Welcome parallel programming example',00AH,00H
 wait_pids:	DW 0,0,0
 fork_num:	DW 3
 fork_num1:	DW 3
-paral1:		DW 'asm/PrintNumbers.com',00H
+proc1:		DW 'PrintNumbers.com',00H
+proc2:		DW 'PrintNumbersRev.com',00H
+proc3:		DW 'sum.com',00H
 
 
 
@@ -91,10 +93,12 @@ PARENT_AREA:
 
 WAIT_LOOP:
 	LDAX D ;sıradaki pid al
+	INX D
+	INX D
 	MOV B,A ; b ye yukle
 	MVI A, WAITPID ; wait until child finish
 	call GTU_OS ; system call
-	
+
 	LDA fork_num1  ; tum cocukları wait edene kadar bekle
 	DCR A
 	STA fork_num1
@@ -103,18 +107,43 @@ WAIT_LOOP:
 
 CHILD_AREA:
 
-	LXI B,paral1
+	LDA fork_num // 3 ise p1 yükle
+	MOV B, A
+	MVI A, 3
+	SUB B
+	JZ LOAD_P3
+	
+	LDA fork_num // 2. proc ise p2 yukle
+	MOV B, A
+	MVI A, 2
+	SUB B
+	JZ LOAD_P2
+
+	LDA fork_num // 1.proc ise p1 yukle
+	MOV B, A
+	MVI A, 1
+	SUB B
+	JZ LOAD_P1
+	JMP END
+
+
+LOAD_P1:
+	LXI B,proc1
 	MVI A, EXEC ; call execve to run new program
 	call GTU_OS ; system call
-	
-	; READ USE AGE AND PRINT SCREEN
-	;LXI B,bye_msg ; test for PRINT_STR
-	;MVI A, PRINT_STR ; store system call type
-	;call GTU_OS ; system call
-	;JMP END
+	JMP END
+LOAD_P2:
+	LXI B,proc2
+	MVI A, EXEC ; call execve to run new program
+	call GTU_OS ; system call
+	JMP END
+LOAD_P3:
+	LXI B,proc3
+	MVI A, EXEC ; call execve to run new program
+	call GTU_OS ; system call
+	JMP END
 
-ERROR_EXIT:
-	
+ERROR_EXIT
 
 END:
 	hlt    ; end program

@@ -3,7 +3,7 @@
 #include "8080emuCPP.h"
 #include "gtuos.h"
 
-#define TEST_ASM "./asm/sum.com"
+#define TEST_ASM "./sum.com"
 
 GTUOS::GTUOS(CPU8080* cpu8080, const char *initialName) {
 
@@ -41,11 +41,11 @@ uint64_t GTUOS::run() {
   uint64_t totalCycleTimes = 0;
   uint16_t csCycle = 0; //context switch cycle
   uint16_t cycle = 0;
+  uint16_t t;
   uint16_t nextIndex;
   bool makeSwitch = false;
 
   do {
-
     if (debugMode == 2)
       std::cin.get();
     ProcessState st = processTable[currProcInd].procState;
@@ -56,13 +56,17 @@ uint64_t GTUOS::run() {
     printf("State:%d\n", st );
 #endif
 
-    totalCycleTimes += cycle += theCPU->Emulate8080p(debugMode);
+    t = theCPU->Emulate8080p(debugMode);
 
-    if (theCPU->isSystemCall()) {
-      totalCycleTimes += cycle += this->handleCall();
+
+    if ( theCPU->isSystemCall()) { // isHalted()
+      t += this->handleCall();
     }
 
-    if ((cycle / CS_CYCLE) > 0 || st == BLOCKED) { // round robin context switch cycle
+    cycle += t;
+    totalCycleTimes += t;
+
+    if (((cycle / CS_CYCLE) > 0 || st == BLOCKED ) && !theCPU->isHalted()) { // round robin context switch cycle
       cycle = cycle % CS_CYCLE;
       nextIndex = getNextProcInd();
       if (nextIndex != currProcInd) // no need if same proc
@@ -70,7 +74,10 @@ uint64_t GTUOS::run() {
       continue;
     }
 
-    if (theCPU->isHalted() ) {
+#ifdef DEBUG
+    printf("pc:%x - lastopcode:%x\n", theCPU->state->pc, *(theCPU->lastOpcode ));
+#endif
+    if (theCPU->isHalted()) { // is Halted operation
       processTable[currProcInd].isAlive = false; // process dead
       // send signal to parent
       if (currProcInd != 0) {
@@ -99,7 +106,9 @@ uint64_t GTUOS::run() {
 
 // p1 -> p2
 void GTUOS::contextSwitch(uint8_t p1, uint8_t p2) {
-  std::cout << BLU << "Context switch occur betwwen p1:" << (int)p1 << ", p2:" << (int)p2 << RESET << std::endl;
+
+  if(debugMode == 2 || debugMode==3)
+  std::cout << BLU << "-->Context switch occur between " << processTable[p1].name << "-->" << processTable[p2].name << RESET << std::endl;
 
   processTable[p1].state8080 = *(theCPU->state);
   if (processTable[p1].procState != BLOCKED) // bloklanmadıysa, devam
@@ -380,6 +389,7 @@ uint8_t GTUOS::exec() {
     exit(1);
   }
   // read new program into memory
+  
   strcpy(processTable[currProcInd].name, filename); // set process name
 
   theCPU->ReadFileIntoMemoryAt(filename, ((Memory*)(theCPU->memory))->getBaseRegister());
@@ -401,6 +411,8 @@ uint8_t GTUOS::waitpid() {
       processTable[currProcInd].procState = BLOCKED;
       return 0; // wait time
     }
+
+  printf("wait complete : %d\n", b );
 
   processTable[currProcInd].procState = READY;
   return CycleTime::WAITPID;
