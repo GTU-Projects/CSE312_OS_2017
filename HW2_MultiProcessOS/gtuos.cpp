@@ -64,6 +64,17 @@ uint64_t GTUOS::run() {
     }
 
 
+    if (theCPU->isHalted() ) {
+      processTable[currProcInd].isAlive = false; // process dead
+      // send signal to parent
+      if (currProcInd != 0) {
+        processTable[processTable[currProcInd].ppid - 2].procState = READY;
+      }
+      printf(RED "Process:%d dead\n" RESET , currProcInd );
+      nextIndex = getNextProcInd();
+      if (nextIndex != currProcInd)
+        contextSwitch(currProcInd, nextIndex);
+    }
     st = processTable[currProcInd].procState;
 
     if ((cycle / CS_CYCLE) > 0 || st == BLOCKED) { // round robin context switch cycle
@@ -77,17 +88,7 @@ uint64_t GTUOS::run() {
     }
 
 
-    if (theCPU->isHalted() ) {
-      processTable[currProcInd].isAlive = false; // process dead
-      // send signal to parent
-      if (currProcInd != 0) {
-        processTable[processTable[currProcInd].ppid - 2].procState = READY;
-      }
-      printf(RED "Process:%d dead\n" RESET , currProcInd );
-      nextIndex = getNextProcInd();
-      if (nextIndex != currProcInd)
-        contextSwitch(currProcInd, nextIndex);
-    }
+
 
 
   } while (!isAllProcessesDone());
@@ -189,9 +190,10 @@ uint8_t GTUOS::readB() {
   int b;
   std::cout << "SystemCall: READ_B" << std::endl;
 
-
   std::cout << "Enter an integer(0-255) for reg B:";
-  std::cin >> b;
+  scanf("%d",&b);
+
+  printf(RED "B:%d\n" RESET,b );
 
   if (b < 0 || b > 255) {
     std::cout << "uint8t -> Bound error. Assigned zero to b register" << std::endl;
@@ -224,16 +226,19 @@ uint8_t GTUOS::printStr() {
 }
 
 uint8_t GTUOS::readStr() {
-  std::string str;
+  char str[255];
   int i;
   uint16_t address;
   std::cout << GRN << "SystemCall: READ_STR" << RESET << std::endl;
   std::cout << "Enter a string: ";
-  getline(std::cin, str);
+
+  scanf(" %[^\n]s",str); // updated for junk whitespaces
+
+  printf(RED "-%s-\n" RESET, str );
 
   address = (theCPU->state->b << 8) | theCPU->state->c;
 
-  for (i = 0; i < str.length(); ++i) {
+  for (i = 0; i < strlen(str); ++i) {
     theCPU->memory->at(address + i) = str[i];
   }
   theCPU->memory->at(address + i) = '\0';
@@ -354,10 +359,10 @@ uint8_t GTUOS::fork() {
 
 uint8_t GTUOS::exec() {
   char filename[MAX_PATH_LEN];
-  int i=0;
+  int i = 0;
   printf(GRN "SystemCall: EXEC\n" RESET );
 
-  bzero(filename,MAX_PATH_LEN);
+  bzero(filename, MAX_PATH_LEN);
 
   uint16_t address = (theCPU->state->b << 8) | theCPU->state->c;
 
@@ -370,9 +375,9 @@ uint8_t GTUOS::exec() {
     ++address;
   }
 
-  filename[i]='\0';
+  filename[i] = '\0';
 
-  if(strcmp(filename,"exit()")==0){
+  if (strcmp(filename, "exit()") == 0) {
     printf(RED "EXIT FORCED\n" RESET);
     exit(1);
   }
