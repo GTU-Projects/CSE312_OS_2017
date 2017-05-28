@@ -38,7 +38,7 @@ GTU_OS:	PUSH D
 	; this file sorts numbers with bubble sort
 
 	; my variables to use in searching
-	ORG 8000H
+	ORG 1000H ; 1K
 START:	DW 12H, 34H, 53H, 2AH, 5BH, 6FH, 33H, 21H, 7CH, 0FFH,0BAH, 0CBH, 0A1H, 1AH, 3BH, 0C3H, 4AH, 5DH, 62H,0A3H,0B1H, 5CH, 7FH, 0CCH, 0AAH, 34H
 
 

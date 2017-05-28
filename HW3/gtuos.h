@@ -4,6 +4,7 @@
 #include <string>
 #include "8080emuCPP.h"
 #include "memory.h"
+#include "MMU_HM.h"
 
 
 #define MAX_PROC_NAME 255
@@ -26,7 +27,6 @@
 #define RESET "\x1B[0m"
 
 using namespace std;
-
 
 typedef enum {
     PRINT_B = 1,
@@ -61,6 +61,10 @@ typedef struct {
     uint8_t isAlive;
     uint8_t childNum;
     uint16_t waitIndex;
+
+    //Page_t pageTable[16]; // 16KB virtual space
+
+
 } ProcessInfo;
 
 class CycleTime {
@@ -93,6 +97,8 @@ public:
 private:
 
     ProcessInfo *processTable ;
+
+
     CPU8080 *theCPU;
     uint8_t debugMode;
     uint8_t currProcInd;

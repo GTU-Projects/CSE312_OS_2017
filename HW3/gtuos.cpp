@@ -2,6 +2,7 @@
 #include <fstream>
 #include "8080emuCPP.h"
 #include "gtuos.h"
+#include "MMU_HM.h"
 
 #define TEST_ASM "./sum.com"
 
@@ -107,8 +108,8 @@ uint64_t GTUOS::run() {
 // p1 -> p2
 void GTUOS::contextSwitch(uint8_t p1, uint8_t p2) {
 
-  if(debugMode == 2 || debugMode==3)
-  std::cout << BLU << "-->Context switch occur between " << processTable[p1].name << "-->" << processTable[p2].name << RESET << std::endl;
+  if (debugMode == 2 || debugMode == 3)
+    std::cout << BLU << "-->Context switch occur between " << processTable[p1].name << "-->" << processTable[p2].name << RESET << std::endl;
 
   processTable[p1].state8080 = *(theCPU->state);
   if (processTable[p1].procState != BLOCKED) // bloklanmadıysa, devam
@@ -176,7 +177,7 @@ uint64_t GTUOS::handleCall() {
     cycleTime = this->waitpid();
     break;
   default:
-    std::cerr << "Invalid system call" << std::endl;
+    std::cerr << "Invalid system call" << (int)regA << std::endl;
     exit(EXIT_FAILURE);
   }
 
@@ -389,7 +390,7 @@ uint8_t GTUOS::exec() {
     exit(1);
   }
   // read new program into memory
-  
+
   strcpy(processTable[currProcInd].name, filename); // set process name
 
   theCPU->ReadFileIntoMemoryAt(filename, ((Memory*)(theCPU->memory))->getBaseRegister());
@@ -453,7 +454,7 @@ void GTUOS::saveMemoryContents(const string& filename) {
     sprintf(str, "%04x", i * 16);
     output << str << " ";
     for (int j = 0; j < 0x10; ++j) {
-      sprintf(str, "%02x", theCPU->memory->at(i * 16 + j));
+      sprintf(str, "%02x", theCPU->memory->physicalAt(i * 16 + j));
       output << str << " ";
     }
     output << std::endl;
