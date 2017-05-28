@@ -16,7 +16,7 @@ PRINT_STR	equ 5
 READ_STR	equ 6
 
 	; Position for stack pointer
-stack   equ 0F000H
+stack   equ 4000H
 
 	org 0000H
 	jmp begin
@@ -38,12 +38,11 @@ GTU_OS:	PUSH D
 	; this file sorts numbers with bubble sort
 
 	; my variables to use in searching
-	ORG 1000H ; 1K
-START:	DW 12H, 34H, 53H, 2AH, 5BH, 6FH, 33H, 21H, 7CH, 0FFH,0BAH, 0CBH, 0A1H, 1AH, 3BH, 0C3H, 4AH, 5DH, 62H,0A3H,0B1H, 5CH, 7FH, 0CCH, 0AAH, 34H
-
+	ORG 3FEH ; 1K
+START:	DW 58H, 34H, 53H
 
 	ORG 0700H
-N:	DB 26 ; number of items to compare
+N:	DB 3 ; number of items to compare
 I:	DB 00H ; index for print array
 
 	ORG 000DH
@@ -107,7 +106,7 @@ PRINT_LOOP:
 	LDA I ; load current index
 	INR A ; increment index
 	STA I ; store index
-	SUI 26 ; # of items in array(actually memory)
+	SUI 3 ; # of items in array(actually memory)
 	JNZ PRINT_LOOP ; i -26 != 0 , if not zero go next item
 
 

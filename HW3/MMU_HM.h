@@ -3,23 +3,8 @@
 
 #include <cstdlib>
 #include "memoryBase.h"
+#include "general_types.h"
 
-#define SIZE1K 1024
-#define SIZE8K 8192
-
-/*
-	VA = Page(4bit -> 2^4 : 16 PageNum) + Offset(10bit -> 2^10 : 1KB PageSize)
-
-	PA = Frame(3bit -> 2^3: 8 PageNum for mem) + Offset(10bit -> 2^10 : 1KB PageSize)
-
-*/
-
-typedef struct{
-	uint8_t modifiedBit;  
-	uint8_t referencedBit;
-	uint8_t present;
-	uint8_t frame; // 
-}Page_t;
 
 
 class MMU_HM: public MemoryBase {
@@ -35,12 +20,17 @@ public:
 
 	void initMM();
 
+	void setProcessInfo(ProcessInfo *processInfo);
+	void loadPageAt(int memPageIndex, int diskPageIndex);
+
 private:
 	uint8_t * mem;
 	uint8_t * disk;
 	uint16_t baseRegister;
 	uint16_t limitRegister;
 
+	ProcessInfo *processInfo;
+	int currentPageIndex; // store last page index for FIFO placement 
 };
 
 

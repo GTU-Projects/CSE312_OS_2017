@@ -17,8 +17,9 @@ int main (int argc, char**argv)
 	CPU8080 theCPU(&mem);
 	GTUOS	theOS(&theCPU, argv[1]);
 
-
 	theCPU.ReadFileIntoMemoryAt(argv[1], 0x0000); // initialize memory
+	
+	mem.setProcessInfo(theOS.getCurrentProcessInfo()); // load first process infos to mem
 	mem.initMM(); // load 1KB data from disk to 
 
 	theOS.setDebugMode(osDebugMode);
@@ -29,7 +30,7 @@ int main (int argc, char**argv)
 
 	// PARALLEL ASM calıstıgında proces bilgileri buraya da eklenir
 	theOS.saveProcInfos("proc_list.txt");
-	
+
 
 	return 0;
 }

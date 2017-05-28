@@ -27,6 +27,9 @@ GTUOS::GTUOS(CPU8080* cpu8080, const char *initialName) {
 
   debugMode = 0;
   currProcInd = 0;
+
+
+
 }
 
 bool GTUOS::isAllProcessesDone()const {
@@ -146,7 +149,7 @@ uint64_t GTUOS::handleCall() {
   uint8_t regA = theCPU->state->a;
   int cycleTime = 0;
 
-  //std::cout<<"Value of regA:"<<unsigned(regA)<<std::endl;
+  std::cout<<"Value of regA:"<<unsigned(regA)<<std::endl;
 
   switch (regA) {
   case PRINT_B:

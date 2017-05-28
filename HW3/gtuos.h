@@ -5,67 +5,8 @@
 #include "8080emuCPP.h"
 #include "memory.h"
 #include "MMU_HM.h"
+#include "general_types.h"
 
-
-#define MAX_PROC_NAME 255
-#define MAX_PROC_COUNT 4
-#define CS_CYCLE 100 // context switch cycle
-#define MAX_PATH_LEN 255
-
-// log settings
-#define LOG_FD stdout
-//#define DEBUG 1
-
-// for colored texts
-#define RED   "\x1B[31m"
-#define GRN   "\x1B[32m"
-#define YEL   "\x1B[33m"
-#define BLU   "\x1B[34m"
-#define MAG   "\x1B[35m"
-#define CYN   "\x1B[36m"
-#define WHT   "\x1B[37m"
-#define RESET "\x1B[0m"
-
-using namespace std;
-
-typedef enum {
-    PRINT_B = 1,
-    PRINT_MEM = 2,
-    READ_B = 3,
-    READ_MEM = 4,
-    PRINT_STR = 5,
-    READ_STR = 6,
-    FORK = 7,
-    EXEC = 8,
-    WAITPID = 9
-} SystemCallType;
-
-typedef enum {
-    READY = 0,
-    BLOCKED = 1,
-    RUNNING = 2
-} ProcessState;
-
-
-typedef struct {
-    char name[MAX_PROC_NAME];
-    State8080 state8080;    // saved registers like a,b,c,sp,pc
-    uint64_t baseReg;
-    uint64_t limitReg;
-    uint16_t pid;
-    uint16_t ppid;  // parent pid
-    uint64_t startTime; // starting time of process, the cycle number of the CPU
-    uint64_t cycle; // how many cycle the process hadd used so far
-    ProcessState  procState; // ready, blocked, running
-    uint64_t address;   //physical addres of the memory location of process
-    uint8_t isAlive;
-    uint8_t childNum;
-    uint16_t waitIndex;
-
-    //Page_t pageTable[16]; // 16KB virtual space
-
-
-} ProcessInfo;
 
 class CycleTime {
 public:
@@ -90,6 +31,10 @@ public:
     void saveMemoryContents(const string& filename);
     void saveProcInfos(const string& filename);
 
+    ProcessInfo* getCurrentProcessInfo(){
+        return &processTable[currProcInd];
+    }
+
     void setDebugMode(uint8_t mode);
     uint64_t run();
     void test(const CPU8080& cpu);
@@ -97,7 +42,6 @@ public:
 private:
 
     ProcessInfo *processTable ;
-
 
     CPU8080 *theCPU;
     uint8_t debugMode;
